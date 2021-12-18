@@ -1,2 +1,2 @@
 # racing
-Racing made in cpp sfml
+Racing made in c sdl2
