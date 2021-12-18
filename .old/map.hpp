@@ -4,7 +4,7 @@ class Map {
 public:
 	sf::Vector2<int> size;	
 	int datasize;
-	sf::Vector2<int>* data;
+	sf::Vector2f* data;
 };
 
 Map readmap(char *name);

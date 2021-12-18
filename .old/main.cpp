@@ -1,4 +1,5 @@
 #include <SFML/Graphics.hpp>
+#include <cmath>
 #include <iostream>
 #include "map.hpp"
 
@@ -19,16 +20,26 @@ int main(int argc, char *argv[]) {
 	sf::VertexArray roadlines(sf::Quads, map.datasize * 4);
 	sf::CircleShape roadcirc = sf::CircleShape(outline);
 
+	float grad1, grad2, ang;
+	grad2 = abs(map.data[map.datasize - 2].y - map.data[map.datasize - 1].y) / abs(map.data[map.datasize - 2].x - map.data[map.datasize - 1].x);
 	for (int i = 1; i < map.datasize; ++i) {
 
-		roadlines[i * 4 + 0].position.x = (float)map.data[i].x;
-		roadlines[i * 4 + 0].position.y = (float)map.data[i].y - outline;
-		roadlines[i * 4 + 2].position.x = (float)map.data[i].x ;
-		roadlines[i * 4 + 2].position.y = (float)map.data[i].y + outline;
-		roadlines[i * 4 + 1].position.x = (float)map.data[i - 1].x;
-		roadlines[i * 4 + 1].position.y = (float)map.data[i - 1].y;
-		roadlines[i * 4 + 3].position.x = (float)map.data[i - 1].x;
-		roadlines[i * 4 + 3].position.y = (float)map.data[i - 1].y;
+		grad1 = fabs(map.data[i].y - map.data[i - 1].y) / fabs(map.data[i].x - map.data[i - 1].x);
+		ang = atan(fabs(grad1 - grad2) / fabs(1 + (grad1 * grad2)));
+
+		roadlines[i * 4 + 0].position.x = map.data[i].x - (outline * cos(ang));
+		roadlines[i * 4 + 0].position.y = map.data[i].y - (outline * sin(ang));
+		
+		roadlines[i * 4 + 1].position.x = map.data[i].x - (outline * cos(ang));
+		roadlines[i * 4 + 1].position.y = map.data[i].y + (outline * sin(ang));
+		
+		roadlines[i * 4 + 2].position.x = map.data[i - 1].x + (outline * cos(ang));
+		roadlines[i * 4 + 2].position.y = map.data[i - 1].y + (outline * sin(ang));
+		
+		roadlines[i * 4 + 3].position.x = map.data[i - 1].x + (outline * cos(ang));
+		roadlines[i * 4 + 3].position.y = map.data[i - 1].y - (outline * sin(ang));
+
+		grad2 = grad1;
 		
 	}
 	
