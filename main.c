@@ -1,16 +1,8 @@
 
 #include <SDL2/SDL.h>
-#include <stdio.h>
-#include <math.h>
 
 #include "types.h"
 #include "controller.h"
-
-#define WINDOWX 680
-#define WINDOWY 480
-
-#define ROADCOLOR 0xFF555555
-#define GRASSCOLOR 0xFF00DD00
 
 void error(char str[]) {
 	fputs("\x1b[1;31mError:\x1b[0m ", stdout);
@@ -36,8 +28,13 @@ int intsize(int a) {
 	else return 5;
 }
 
+SDL_Window   *m_window;
+SDL_Renderer *m_window_renderer;
+
+struct Map map;
+
 void carinfo(struct Car *car) {
-	printf("\x1b[2J\x1b[HPosition: (%f, %f)\nVelocity: (%f, %f)\nEyes: ←: %*d ↑: %*d → : %*d\nController: %s%s%s\n", 
+	printf("\x1b[2J\x1b[HPosition: (%f, %f)\nVelocity: (%f, %f)\nEyes: ←: %*d ↑: %*d → : %*d\nController: %s%s%s\nFitness: %d\n", 
 		car->pos.x, car->pos.y,
 		car->vel.x, car->vel.y,
 		3, car->eyes.left,
@@ -45,20 +42,33 @@ void carinfo(struct Car *car) {
 		3, car->eyes.right,
 		car->controller.left    ? "← " : "  ",
 		car->controller.forward ? " ↑ " : "   ",
-		car->controller.right   ? "→ " : "  "
+		car->controller.right   ? "→ " : "  ",
+		car->fitness
 	);
+
+	putchar('\n');
+	for (unsigned int i = 0; i < car->nodelen; ++i) {
+		printf("%d: %f dest:", i, car->node[i].val);
+		for (unsigned int m = 0; m < car->node[i].destlen; ++m) {
+			printf("%d:%f, ", car->node[i].dest[m].i, car->node[i].dest[m].bias);
+		}
+		putchar('\n');
+		if (
+			i == INPUTNODES - 1 ||
+			i == NODESPERLAYER * LAYERS + INPUTNODES - 1 ||
+			(i > INPUTNODES - 1 &&
+				(i - INPUTNODES + 1) % NODESPERLAYER == 0
+			)
+		) {
+			putchar('\n');
+		}
+	}
 	
 }
 
 void carclean(struct Car *car) {
-	car->controller.forward = 0;
-	car->controller.left = 0;
-	car->controller.right = 0;
 	car->eyes.resolution = 5;
-	car->eyes.forward = 0;
-	car->eyes.left = 0;
-	car->eyes.right = 0;
-	car->physics.grassfriction = 0.6;
+	car->physics.grassfriction = 0.3;
 	car->physics.roadfriction = 0.9;
 	car->physics.accel = 1;
 	car->physics.forwardaccel = 0.01;
@@ -66,21 +76,28 @@ void carclean(struct Car *car) {
 	car->physics.wheeldiraccel = 20;
 	car->physics.wheelmaxdir = 30;
 	car->physics.wheelturnback = 3;
-	car->pos.x = WINDOWX / 2;
-	car->pos.y = WINDOWY / 2;
+	car->aienabled = 1;
+}
+
+void carresetpos(struct Car *car) {
+	car->controller.forward = 0;
+	car->controller.left = 0;
+	car->controller.right = 0;
+	car->eyes.forward = 0;
+	car->eyes.left = 0;
+	car->eyes.right = 0;
+	car->pos.x = STARTX;//WINDOWX / 2;
+	car->pos.y = STARTY;//WINDOWY / 2;
 	car->vel.x = 0;
 	car->vel.y = 0;
 	car->forwardvel = 0;
 	car->wheeldir = 0;
 	car->wheeldirvel = 0;
-	car->dir = 0;
-	car->skid = 0;
-	car->skidlen = 0;
-	car->aienabled = 1;
+	car->dir = STARTDIR;
+	// car->skid = 0;
+	// car->skidlen = 0;
+	car->fitness = 0;
 }
-
-struct Map map;
-
 void carframe(struct Car *car) {
 
 	unsigned int _MAPVALUE_pos;
@@ -196,35 +213,105 @@ void carframe(struct Car *car) {
 		// );
 
 	// calculate skid marks
-		if (car->skid > 0) {
-			if (car->skidlen < 50 && car->skid > 30) {
-				car->skidpos[car->skidlen].x = car->pos.x - (15 * cos(RAD(car->dir)));
-				car->skidpos[car->skidlen].y = car->pos.y - (15 * sin(RAD(car->dir)));
-				++car->skidlen;
-			}
-			--car->skid;
-		} else if (car->forwardvel > 5) {
-			decimal temp_dir = DEG(atan(car->vel.y / car->vel.x));
-			if      (temp_dir < 0  ) temp_dir += 360;
-			else if (temp_dir > 360) temp_dir -= 360;
-			if (fabs(temp_dir - car->dir) > 180) {
-			// if (1) {
-				car->skid = 50;
-				car->skidlen = 0;
-			}
-		}
+		// if (car->skid > 0) {
+			// if (car->skidlen < 50 && car->skid > 30) {
+				// car->skidpos[car->skidlen].x = car->pos.x - (15 * cos(RAD(car->dir)));
+				// car->skidpos[car->skidlen].y = car->pos.y - (15 * sin(RAD(car->dir)));
+				// ++car->skidlen;
+			// }
+			// --car->skid;
+		// } else if (car->forwardvel > 5) {
+			// decimal temp_dir = DEG(atan(car->vel.y / car->vel.x));
+			// if      (temp_dir < 0  ) temp_dir += 360;
+			// else if (temp_dir > 360) temp_dir -= 360;
+			// if (fabs(temp_dir - car->dir) > 180) {
+			// // if (1) {
+				// car->skid = 50;
+				// car->skidlen = 0;
+			// }
+		// }
 
 	// Get next ticks controlls
+		// if (MAPVALUE(car->pos.x, car->pos.y) == 0) {
+			// if (car->fitness > 0) car->fitness--;
+		if (MAPVALUE(car->pos.x, car->pos.y) != 0)
+			car->fitness = (car->fitness + MAPVALUE(car->pos.x, car->pos.y)) / 2;
 		if (car->aienabled) carcontroller(car);
+}
+
+void carrender(struct Car *car, SDL_Texture *car_asset, SDL_Rect *car_size, SDL_Rect *car_pos) {
+
+	// render car
+		car_size->x = car->sprite * 65 - 5;
+		car_pos->x = (unsigned int)car->pos.x - car_pos->w / 2;
+		car_pos->y = (unsigned int)car->pos.y - car_pos->h / 2;
+       	SDL_RenderCopyEx(m_window_renderer, car_asset, car_size, car_pos, car->dir, 0, 0);
+
+	// render eyes
+		SDL_SetRenderDrawColor(m_window_renderer, 255, 0, 0, 255);
+		if (car->eyes.forward > 0) {
+			SDL_RenderDrawLine(m_window_renderer,
+				car->pos.x, car->pos.y,
+				car->pos.x + car->eyes.forward * car->eyes.resolution * cos(RAD(car->dir)),
+				car->pos.y + car->eyes.forward * car->eyes.resolution * sin(RAD(car->dir))
+			);
+		}
+		if (car->eyes.right > 0) {
+			SDL_RenderDrawLine(m_window_renderer,
+				car->pos.x, car->pos.y,
+				car->pos.x + car->eyes.right * car->eyes.resolution * -sin(RAD(car->dir)),
+				car->pos.y + car->eyes.right * car->eyes.resolution * cos(RAD(car->dir))
+			);
+		}
+		if (car->eyes.left > 0) {
+			SDL_RenderDrawLine(m_window_renderer,
+				car->pos.x, car->pos.y,
+				car->pos.x + car->eyes.left * car->eyes.resolution * sin(RAD(car->dir)),
+				car->pos.y + car->eyes.left * car->eyes.resolution * -cos(RAD(car->dir))
+			);
+		}
+
+}
+
+void cargeneration(struct Car* car) {
+	decimal maxfitness = 0;
+	unsigned int maxfitnessid = 0;
+	for (unsigned int i = 0; i < GENERATIONSIZE; ++i) {
+		if (car[i].fitness > maxfitness) {
+			maxfitness = car[i].fitness;
+			maxfitnessid = i;
+		}
+	}
+	for (unsigned int i = 0; i < GENERATIONSIZE; ++i) { if (i != maxfitnessid) {
+
+		car[i].nodelen = car[maxfitnessid].nodelen;
+		car[i].node = realloc(car[i].node, car[i].nodelen * sizeof(struct Node));
+		for (unsigned int m = 0; m < car[i].nodelen; ++m) {
+			car[i].node[m].destlen = car[maxfitnessid].node[m].destlen;
+
+			if (car[i].node[m].destlen != 0) {
+				car[i].node[m].dest    = realloc(car[i].node[m].dest, car[i].node[m].destlen * sizeof(struct Nodeconnection));
+				for (unsigned int j = 0; j < car[i].node[m].destlen; ++j) {
+					car[i].node[m].dest[j].bias = car[maxfitnessid].node[m].dest[j].bias + (
+						(decimal)((rand() % 200) - 100) / 100
+					);
+					// if (car[i].node[m].dest[j].bias > 1 ) car[i].node[m].dest[j].bias = 1 ;
+					// if (car[i].node[m].dest[j].bias > -1) car[i].node[m].dest[j].bias = -1;
+				}
+			}
+			
+		}
+		
+	} carresetpos(&car[i]); }
+	printf("Max Average: %f\n", (decimal)((rand() % 200) - 100) / 100);
 }
 
 int main(void) {
 	// Init vars
 
-		// printf("%d\n", map_y);
+		srand(time(NULL));
 
-		SDL_Window   *m_window;
-		SDL_Renderer *m_window_renderer;
+		// printf("%d\n", map_y);
 
 		SDL_Surface *_tempbmp;
 		SDL_Texture *car_asset;
@@ -232,6 +319,7 @@ int main(void) {
 		SDL_Texture *map_asset;
 
 		decimal fps;
+		decimal maxfps = 20;
 		long unsigned int fps_pretime = 0;
 		long unsigned int fps_curtime = 0;
 
@@ -311,10 +399,14 @@ int main(void) {
 		map_pos->w = WINDOWX;
 		map_pos->h = WINDOWY;
 
-		struct Car car;
-		carclean(&car);
-		car.sprite = 2;
-	
+		struct Car *car = malloc(GENERATIONSIZE * sizeof(struct Car));
+		for (unsigned int i = 0; i < GENERATIONSIZE; ++i) {
+			carclean(&car[i]);
+			carresetpos(&car[i]);
+			carinit(&car[i]);
+			car[i].sprite = rand() % 6;
+		}
+		
 		_tempbmp   = SDL_LoadBMP("./assets/cars.bmp");
 		car_asset  = SDL_CreateTextureFromSurface(m_window_renderer, _tempbmp);
 		SDL_FreeSurface(_tempbmp);
@@ -370,24 +462,41 @@ int main(void) {
 						case SDL_QUIT:
 							goto end;
 						case SDL_KEYDOWN:
-							if (e.key.keysym.sym == SDLK_p) {
-								car.controller.forward = 0;
-								car.controller.left = 0;
-								car.controller.right = 0;
-								car.aienabled = car.aienabled == 0 ? 1 : 0;
-								break;
+							switch (e.key.keysym.sym) {
+								case SDLK_p:
+									car[0].controller.forward = 0;
+									car[0].controller.left = 0;
+									car[0].controller.right = 0;
+									car[0].aienabled = car[0].aienabled == 0 ? 1 : 0;
+									break;
+								case SDLK_1:
+									maxfps = 20;
+									break;
+								case SDLK_2:
+									maxfps = 40;
+									break;
+								case SDLK_3:
+									maxfps = 100;
+									break;
+								case SDLK_4:
+									maxfps = 500;
+									break;
+								case SDLK_5:
+									maxfps = 9999;
+									break;
+								default: break;
 							}
 						case SDL_KEYUP:
-							if (car.aienabled) break;
+							if (car[0].aienabled) break;
 							switch (e.key.keysym.sym) {
 								case SDLK_a:
-									car.controller.left = (e.type == SDL_KEYDOWN) ? 1 : 0;
+									car[0].controller.left = (e.type == SDL_KEYDOWN) ? 1 : 0;
 									break;
 								case SDLK_d:
-									car.controller.right = (e.type == SDL_KEYDOWN) ? 1 : 0;
+									car[0].controller.right = (e.type == SDL_KEYDOWN) ? 1 : 0;
 									break;
 								case SDLK_w:
-									car.controller.forward = (e.type == SDL_KEYDOWN) ? 1 : 0;
+									car[0].controller.forward = (e.type == SDL_KEYDOWN) ? 1 : 0;
 									break;
 								default: break;
 							}
@@ -395,12 +504,13 @@ int main(void) {
 					}
 				}
 
-				carframe(&car);
-
-				if (tick == 20) {
-					carinfo(&car);
+				if (tick == GENERATIONTIMEOUT) {
+					cargeneration(car);
 					tick = 0;
-				} else ++tick;
+				} else if (tick % 5 == 0) {
+					carinfo(&car[0]);
+				}
+				++tick;
 				
 			// Render
 
@@ -410,45 +520,21 @@ int main(void) {
 				// render map
 					SDL_RenderCopy(m_window_renderer, map_asset, map_size, map_pos);
 
+				// render cars
+					for (unsigned int i = 0; i < GENERATIONSIZE; ++i) {
+						carframe(&car[i]);
+						carrender(&car[i], car_asset, car_size, car_pos);
+					}
+
 				// render skid
-					if (car.skid > 0) {
+					/*if (car.skid > 0) {
 						for (unsigned int i = 0; i < car.skidlen; ++i) {
 							SDL_SetRenderDrawColor(m_window_renderer, 0, (i * 5), 0, 255);
 							car_skid_mark->x = car.skidpos[i].x - (car_skid_mark->w / 2);
 							car_skid_mark->y = car.skidpos[i].y - (car_skid_mark->h / 2);
 							SDL_RenderFillRect(m_window_renderer, car_skid_mark);
 						}
-					}
-
-				// render car
-					car_size->x = car.sprite * 65 - 5;
-					car_pos->x = (unsigned int)car.pos.x - car_pos->w / 2;
-					car_pos->y = (unsigned int)car.pos.y - car_pos->h / 2;
-		        	SDL_RenderCopyEx(m_window_renderer, car_asset, car_size, car_pos, car.dir, 0, 0);
-
-				// render eyes
-					SDL_SetRenderDrawColor(m_window_renderer, 255, 0, 0, 255);
-					if (car.eyes.forward > 0) {
-						SDL_RenderDrawLine(m_window_renderer,
-							car.pos.x, car.pos.y,
-							car.pos.x + car.eyes.forward * car.eyes.resolution * cos(RAD(car.dir)),
-							car.pos.y + car.eyes.forward * car.eyes.resolution * sin(RAD(car.dir))
-						);
-					}
-					if (car.eyes.right > 0) {
-						SDL_RenderDrawLine(m_window_renderer,
-							car.pos.x, car.pos.y,
-							car.pos.x + car.eyes.right * car.eyes.resolution * -sin(RAD(car.dir)),
-							car.pos.y + car.eyes.right * car.eyes.resolution * cos(RAD(car.dir))
-						);
-					}
-					if (car.eyes.left > 0) {
-						SDL_RenderDrawLine(m_window_renderer,
-							car.pos.x, car.pos.y,
-							car.pos.x + car.eyes.left * car.eyes.resolution * sin(RAD(car.dir)),
-							car.pos.y + car.eyes.left * car.eyes.resolution * -cos(RAD(car.dir))
-						);
-					}
+					}*/
 
 				// Render fps
 					for (int i = 1; i < intsize(fps) + 1; ++i) {
@@ -469,8 +555,8 @@ int main(void) {
 
 				fps_pretime = SDL_GetPerformanceCounter();
 				
-				if (fps > 15) { // limiting to 20fps, then doing a physics frame every second, cuz with ai i cant have time based physics that would be jank
-					SDL_Delay(1000 / 20 - 1 / fps);
+				if (fps > maxfps - 5) { // limiting to 20fps, then doing a physics frame every second, cuz with ai i cant have time based physics that would be jank
+					SDL_Delay(1000 / maxfps - 1 / fps);
 				}	
 
 			//
