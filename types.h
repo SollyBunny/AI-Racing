@@ -7,8 +7,10 @@
 #define RAD(deg) (deg * 0.01745329)
 #define DEG(rad) (rad * 57.29578)
 
-# define GENERATIONSIZE 200
-# define GENERATIONTIMEOUT 100
+# define GENERATIONSIZE 500
+# define GENERATIONTIMEOUT 150
+
+#define MAXEYEVAL 10
 
 #define STARTX 80
 #define STARTY 470
@@ -17,17 +19,17 @@
 #define WINDOWX 680
 #define WINDOWY 480
 
-#define ROADCOLOR  0xFF555555
-#define GRASSCOLOR 0xFF00DD00
+#define BARRIERCOLOR  0xFF111111
+#define ROADCOLOR     0xFF555555
+#define GRASSCOLOR    0xFF00DD00
 
 /* 
 	eye left
 	eye right
 	eye forward
-	vel
 	dir
 */
-#define INPUTNODES 5
+#define INPUTNODES 3
 /*
 	controller left
 	controller right
@@ -35,7 +37,9 @@
 */
 #define OUTPUTNODES 3
 #define LAYERS 2
-#define NODESPERLAYER 15
+#define NODESPERLAYER 5
+
+#define MUTATIONCHANCE 50
 
 typedef double decimal;
 
@@ -74,12 +78,14 @@ struct Nodeconnection {
 };
 
 struct Node {
+	unsigned int vallen;
 	decimal val;
 	unsigned int destlen;
 	struct Nodeconnection *dest;
 };
 
 struct Car {
+	unsigned int id;
 	unsigned int sprite;
 	struct Controller controller;
 	struct Eyes eyes;

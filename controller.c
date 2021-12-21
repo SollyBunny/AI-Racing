@@ -23,7 +23,7 @@
 	The speed of car
 		car->vel.x
 		car->vel.y
-		car->forwardaccel
+		// car->forwardaccel
 		car->wheeldir
 	For any other information from the car you can find in types.h
 
@@ -55,8 +55,6 @@ void carinit(struct Car *car) {
 			car->node[i].dest[m].bias = RANDOMBIAS();
 		}
 	}
-
-	
 
 	for (unsigned int i = 0; i < LAYERS - 1; ++i) {
 		for (unsigned int m = 0; m < NODESPERLAYER; ++m) {
@@ -124,21 +122,26 @@ void carinit(struct Car *car) {
 
 void carcontroller(struct Car *car) {
 
-	#define EYENORMALIZE(a) (decimal)a
+	#define EYENORMALIZE(a) (((decimal)(a) / (MAXEYEVAL / 2)) - 1)
 
 	car->node[0].val = EYENORMALIZE(car->eyes.left);
 	car->node[1].val = EYENORMALIZE(car->eyes.right);
 	car->node[2].val = EYENORMALIZE(car->eyes.forward);
-	car->node[3].val = car->forwardvel;
-	car->node[4].val = car->dir;
+	// car->node[3].val = car->forwardvel;
+	// car->node[3].val = (car->dir / 180) - 1;
 
 	for (unsigned int i = 5; i < car->nodelen; ++i) { 
 		car->node[i].val = 0;
+		car->node[i].vallen = 0;
 	}
 
 	for (unsigned int i = 0; i < car->nodelen; ++i) {
+		if (i > INPUTNODES - 1) {
+			car->node[i].val /= car->node[i].vallen;
+		}
 		for (unsigned int m = 0; m < car->node[i].destlen; ++m) {
-			car->node[car->node[i].dest[m].i].val += car->node[i].val * car->node[i].dest[m].bias;
+			car->node[car->node[i].dest[m].i].vallen++;
+			car->node[car->node[i].dest[m].i].val += (car->node[i].val + car->node[i].dest[m].bias) / 2;
 			// if (car->node[i].val != 0) {
 				// printf("%f\n", car->node[i].val * car->node[i].dest[m].bias);
 			// }

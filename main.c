@@ -1,4 +1,3 @@
-
 #include <SDL2/SDL.h>
 
 #include "types.h"
@@ -33,8 +32,13 @@ SDL_Renderer *m_window_renderer;
 
 struct Map map;
 
+unsigned int maxfitnessid = 0;
+unsigned int maxfitness = 0;
+
 void carinfo(struct Car *car) {
-	printf("\x1b[2J\x1b[HPosition: (%f, %f)\nVelocity: (%f, %f)\nEyes: ←: %*d ↑: %*d → : %*d\nController: %s%s%s\nFitness: %d\n", 
+	printf("\x1b[2J\x1b[HId: %d\nFitness: %d Maxfitness: %d\nPosition: (%f, %f)\nVelocity: (%f, %f)\nEyes: ←: %*d ↑: %*d → : %*d\nController: %s%s%s\n", 
+		car->id,
+		car->fitness, maxfitness,
 		car->pos.x, car->pos.y,
 		car->vel.x, car->vel.y,
 		3, car->eyes.left,
@@ -42,8 +46,7 @@ void carinfo(struct Car *car) {
 		3, car->eyes.right,
 		car->controller.left    ? "← " : "  ",
 		car->controller.forward ? " ↑ " : "   ",
-		car->controller.right   ? "→ " : "  ",
-		car->fitness
+		car->controller.right   ? "→ " : "  "
 	);
 
 	putchar('\n');
@@ -68,9 +71,9 @@ void carinfo(struct Car *car) {
 
 void carclean(struct Car *car) {
 	car->eyes.resolution = 5;
-	car->physics.grassfriction = 0.3;
+	car->physics.grassfriction = 0.6;
 	car->physics.roadfriction = 0.9;
-	car->physics.accel = 1;
+	car->physics.accel = 2.5;
 	car->physics.forwardaccel = 0.01;
 	car->physics.wheeldirfriction = 0.5;
 	car->physics.wheeldiraccel = 20;
@@ -83,9 +86,9 @@ void carresetpos(struct Car *car) {
 	car->controller.forward = 0;
 	car->controller.left = 0;
 	car->controller.right = 0;
-	car->eyes.forward = 0;
-	car->eyes.left = 0;
-	car->eyes.right = 0;
+	// car->eyes.forward = 0;
+	// car->eyes.left = 0;
+	// car->eyes.right = 0;
 	car->pos.x = STARTX;//WINDOWX / 2;
 	car->pos.y = STARTY;//WINDOWY / 2;
 	car->vel.x = 0;
@@ -135,26 +138,22 @@ void carframe(struct Car *car) {
 		if      (car->dir < 0  ) car->dir += 360;
 		else if (car->dir > 360) car->dir -= 360;
 
-	// move forward car cuz of its momentum
-		car->pos.x += car->vel.x;
-		car->pos.y += car->vel.y;
-
 	// debug bounds check
-		// if (car->pos.x < 0) {
-			// car->vel.x *= -1;
-			// car->pos.x = 0;
-		// } else if (car->pos.x > WINDOWX - 65) {
-			// car->vel.x *= -1;
-			// car->pos.x = WINDOWX - 65;
-		// }
-// 
-		// if (car->pos.y < 0) {
-			// car->vel.y *= -1;
-			// car->pos.y = 0;
-		// } else if (car->pos.y > WINDOWY - 50) {
-			// car->vel.y *= -1;
-			// car->pos.y = WINDOWY - 50;
-		// }
+		if (car->pos.x < 0) {
+			car->vel.x *= -1;
+			car->pos.x = 0;
+		} else if (car->pos.x > WINDOWX - 30) {
+			car->vel.x *= -1;
+			car->pos.x = WINDOWX - 30;
+		}
+		
+		if (car->pos.y < 0) {
+			car->vel.y *= -1;
+			car->pos.y = 0;
+		} else if (car->pos.y > WINDOWY - 30) {
+			car->vel.y *= -1;
+			car->pos.y = WINDOWY - 30;
+		}
 
 	// dampen velocity cuz eee
 		// check if on road or grass
@@ -162,11 +161,19 @@ void carframe(struct Car *car) {
 			car->vel.x *= car->physics.grassfriction;
 			car->vel.y *= car->physics.grassfriction;
 			car->forwardvel *= car->physics.grassfriction;
+		} else if (MAPVALUE(car->pos.x, car->pos.y) == 1) {
+			car->vel.x = 0;
+			car->vel.y = 0;
+			car->forwardvel = 0;
 		} else {
 			car->vel.x *= car->physics.roadfriction;
 			car->vel.y *= car->physics.roadfriction;
 			car->forwardvel *= car->physics.roadfriction;
 		}
+
+	// move forward car cuz of its momentum
+		car->pos.x += car->vel.x;
+		car->pos.y += car->vel.y;
 
 	// Calculate eyes (how far from grass)
 
@@ -178,10 +185,10 @@ void carframe(struct Car *car) {
 		while (MAPVALUE(
 			car->pos.x + add.x, 
 			car->pos.y + add.y
-		) != 0) {
+		) > 1) {
 			add.x += car->eyes.resolution * cos(RAD(car->dir));
 			add.y += car->eyes.resolution * sin(RAD(car->dir));
-			++car->eyes.forward;
+			if ((++car->eyes.forward) > MAXEYEVAL) break;
 		}
 
 		car->eyes.right = 0;
@@ -189,10 +196,10 @@ void carframe(struct Car *car) {
 		while (MAPVALUE(
 			car->pos.x + add.x, 
 			car->pos.y + add.y
-		) != 0) {
+		) > 1) {
 			add.x -= car->eyes.resolution * sin(RAD(car->dir));
 			add.y += car->eyes.resolution * cos(RAD(car->dir));
-			++car->eyes.right;
+			if ((++car->eyes.right) > MAXEYEVAL) break;
 		}
 
 		car->eyes.left = 0;
@@ -200,10 +207,10 @@ void carframe(struct Car *car) {
 		while (MAPVALUE(
 			car->pos.x + add.x, 
 			car->pos.y + add.y
-		) != 0) {
+		) > 1) {
 			add.x += car->eyes.resolution * sin(RAD(car->dir));
 			add.y -= car->eyes.resolution * cos(RAD(car->dir));
-			++car->eyes.left;
+			if ((++car->eyes.left) > MAXEYEVAL) break;
 		}
 		
 		// printf("Forward: %d\nLeft: %d\nRight: %d\n",
@@ -232,21 +239,25 @@ void carframe(struct Car *car) {
 		// }
 
 	// Get next ticks controlls
-		// if (MAPVALUE(car->pos.x, car->pos.y) == 0) {
-			// if (car->fitness > 0) car->fitness--;
-		if (MAPVALUE(car->pos.x, car->pos.y) != 0)
+		if (MAPVALUE(car->pos.x, car->pos.y) > 1 && MAPVALUE(car->pos.x, car->pos.y) < car->fitness + 20) {
 			car->fitness = (car->fitness + MAPVALUE(car->pos.x, car->pos.y)) / 2;
+		}
 		if (car->aienabled) carcontroller(car);
 }
 
 void carrender(struct Car *car, SDL_Texture *car_asset, SDL_Rect *car_size, SDL_Rect *car_pos) {
 
 	// render car
-		car_size->x = car->sprite * 65 - 5;
+		SDL_SetRenderDrawColor(m_window_renderer, 255, 255, 255, 255);
 		car_pos->x = (unsigned int)car->pos.x - car_pos->w / 2;
 		car_pos->y = (unsigned int)car->pos.y - car_pos->h / 2;
-       	SDL_RenderCopyEx(m_window_renderer, car_asset, car_size, car_pos, car->dir, 0, 0);
-
+		if (car->id == maxfitnessid) {		
+			car_size->x = 6 * 65 - 5;
+		} else {
+			car_size->x = car->sprite * 65 - 5;
+		}
+   		SDL_RenderCopyEx(m_window_renderer, car_asset, car_size, car_pos, car->dir, 0, 0);
+		
 	// render eyes
 		SDL_SetRenderDrawColor(m_window_renderer, 255, 0, 0, 255);
 		if (car->eyes.forward > 0) {
@@ -274,8 +285,6 @@ void carrender(struct Car *car, SDL_Texture *car_asset, SDL_Rect *car_size, SDL_
 }
 
 void cargeneration(struct Car* car) {
-	decimal maxfitness = 0;
-	unsigned int maxfitnessid = 0;
 	for (unsigned int i = 0; i < GENERATIONSIZE; ++i) {
 		if (car[i].fitness > maxfitness) {
 			maxfitness = car[i].fitness;
@@ -292,11 +301,15 @@ void cargeneration(struct Car* car) {
 			if (car[i].node[m].destlen != 0) {
 				car[i].node[m].dest    = realloc(car[i].node[m].dest, car[i].node[m].destlen * sizeof(struct Nodeconnection));
 				for (unsigned int j = 0; j < car[i].node[m].destlen; ++j) {
-					car[i].node[m].dest[j].bias = car[maxfitnessid].node[m].dest[j].bias + (
-						(decimal)((rand() % 200) - 100) / 100
-					);
-					// if (car[i].node[m].dest[j].bias > 1 ) car[i].node[m].dest[j].bias = 1 ;
-					// if (car[i].node[m].dest[j].bias > -1) car[i].node[m].dest[j].bias = -1;
+					car[i].node[m].dest[j].bias = car[maxfitnessid].node[m].dest[j].bias;
+					if (rand() % 100 <= MUTATIONCHANCE) {
+						car[i].node[m].dest[j].bias += (
+							(decimal)((rand() % 200) - 100) / 100
+						);
+						if      (car[i].node[m].dest[j].bias > 1 ) car[i].node[m].dest[j].bias = 1 ;
+						else if (car[i].node[m].dest[j].bias < -1) car[i].node[m].dest[j].bias = -1;
+		
+					}
 				}
 			}
 			
@@ -306,7 +319,11 @@ void cargeneration(struct Car* car) {
 	printf("Max Average: %f\n", (decimal)((rand() % 200) - 100) / 100);
 }
 
-int main(void) {
+#ifdef _WIN32
+	int main(int argc, char *argv[]) {
+#else
+	int main(void) {
+#endif
 	// Init vars
 
 		srand(time(NULL));
@@ -320,6 +337,7 @@ int main(void) {
 
 		decimal fps;
 		decimal maxfps = 20;
+		unsigned int ticksperframe = 20;
 		long unsigned int fps_pretime = 0;
 		long unsigned int fps_curtime = 0;
 
@@ -363,6 +381,7 @@ int main(void) {
 				++i;
 			}
 			if (i != map.x * map.y) {
+				printf("I: %i\nC: %d", i, c);
 				free(map.data);
 				goto maperror;
 			}
@@ -381,7 +400,10 @@ int main(void) {
 			for (unsigned int i = 0; i < map.x * map.y; ++i) {
 				if (map.data[i] == 0) {
 					*dst++ = GRASSCOLOR;
+				} else if (map.data[i] == 1) {
+					*dst++ = BARRIERCOLOR;
 				} else {
+					// *dst++ = map.data[i] * 256;
 					*dst++ = ROADCOLOR;
 				}
 			}
@@ -399,13 +421,15 @@ int main(void) {
 		map_pos->w = WINDOWX;
 		map_pos->h = WINDOWY;
 
-		struct Car *car = malloc(GENERATIONSIZE * sizeof(struct Car));
-		for (unsigned int i = 0; i < GENERATIONSIZE; ++i) {
-			carclean(&car[i]);
-			carresetpos(&car[i]);
-			carinit(&car[i]);
-			car[i].sprite = rand() % 6;
-		}
+		// Init cars
+			struct Car *car = malloc(GENERATIONSIZE * sizeof(struct Car));
+			for (unsigned int i = 0; i < GENERATIONSIZE; ++i) {
+				carclean(&car[i]);
+				carresetpos(&car[i]);
+				carinit(&car[i]);
+				car[i].sprite = rand() % 6;
+				car[i].id = i;
+			}
 		
 		_tempbmp   = SDL_LoadBMP("./assets/cars.bmp");
 		car_asset  = SDL_CreateTextureFromSurface(m_window_renderer, _tempbmp);
@@ -470,19 +494,19 @@ int main(void) {
 									car[0].aienabled = car[0].aienabled == 0 ? 1 : 0;
 									break;
 								case SDLK_1:
-									maxfps = 20;
+									ticksperframe = 1;
 									break;
 								case SDLK_2:
-									maxfps = 40;
+									ticksperframe = 5;
 									break;
 								case SDLK_3:
-									maxfps = 100;
+									ticksperframe = 10;
 									break;
 								case SDLK_4:
-									maxfps = 500;
+									ticksperframe = 50;
 									break;
 								case SDLK_5:
-									maxfps = 9999;
+									ticksperframe = GENERATIONTIMEOUT;
 									break;
 								default: break;
 							}
@@ -504,13 +528,14 @@ int main(void) {
 					}
 				}
 
-				if (tick == GENERATIONTIMEOUT) {
+				if (tick > GENERATIONTIMEOUT) {
 					cargeneration(car);
 					tick = 0;
+					carinfo(&car[maxfitnessid]);
 				} else if (tick % 5 == 0) {
-					carinfo(&car[0]);
+					carinfo(&car[maxfitnessid]);
 				}
-				++tick;
+				tick += ticksperframe;
 				
 			// Render
 
@@ -521,10 +546,14 @@ int main(void) {
 					SDL_RenderCopy(m_window_renderer, map_asset, map_size, map_pos);
 
 				// render cars
-					for (unsigned int i = 0; i < GENERATIONSIZE; ++i) {
-						carframe(&car[i]);
-						carrender(&car[i], car_asset, car_size, car_pos);
+					for (unsigned int i = 0; i < GENERATIONSIZE; ++i) { 
+						for (unsigned int m = 0; m < ticksperframe; ++m) {
+							carframe(&car[i]);
+						}
+						if (i != maxfitnessid)
+							carrender(&car[i], car_asset, car_size, car_pos);
 					}
+					carrender(&car[maxfitnessid], car_asset, car_size, car_pos);
 
 				// render skid
 					/*if (car.skid > 0) {
@@ -537,13 +566,13 @@ int main(void) {
 					}*/
 
 				// Render fps
-					for (int i = 1; i < intsize(fps) + 1; ++i) {
-						font_size->x = (
-							((int)fps / powten(i)) % 10
-						) * 6;
-						font_pos->x = (intsize(fps) - i) * 10;
-			        	SDL_RenderCopy(m_window_renderer, font_asset, font_size, font_pos);
-			        }
+					// for (int i = 1; i < intsize(fps) + 1; ++i) {
+						// font_size->x = (
+							// ((int)fps / powten(i)) % 10
+						// ) * 6;
+						// font_pos->x = (intsize(fps) - i) * 10;
+			        	// SDL_RenderCopy(m_window_renderer, font_asset, font_size, font_pos);
+			        // }
 		        
 		        SDL_RenderPresent(m_window_renderer);
 
