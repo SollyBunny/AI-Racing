@@ -13,7 +13,8 @@ You need sdl2, gcc (or clang) and make
 ##### Ubloatu
     # apt update
     # apt install libsdl2-dev build-essential
-Then you can simple make and run ./build/racer (or just make run)
+Then you can simple make and run ./build/racer (or just make run)  
+
     $ make
     $ make run
 ## Winblows  
@@ -26,8 +27,10 @@ https://sourceforge.net/projects/mingw/
 Make sure to also install make in the installer gui to make stuff easier (optional)  
 
 ##### Compiling
-Compile by running in a terminal in the folder
-    # make winblows
-or if you dont have make
-	# x86_64-w64-mingw32-gcc main.c controller.c -o build\\racer.exe -L%cd%\\SDL2\\x86_64-w64-mingw32\\lib -pthread -I%cd%\\SDL2\\x86_64-w64-mingw32\\include -Dmain=SDL_main -lmingw32 -lSDL2main -lSDL2 -lm -w -Wl,-subsystem,windows
+Compile by running in a terminal in the folder  
+
+    $ make winblows
+or if you dont have make  
+
+    $ x86_64-w64-mingw32-gcc main.c controller.c -o build\\racer.exe -L%cd%\\SDL2\\x86_64-w64-mingw32\\lib -pthread -I%cd%\\SDL2\\x86_64-w64-mingw32\\include -Dmain=SDL_main -lmingw32 -lSDL2main -lSDL2 -lm -w -Wl,-subsystem,windows
 you can then double click on racer.exe
