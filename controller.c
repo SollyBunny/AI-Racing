@@ -1,5 +1,5 @@
 
-#include "types.h"
+#include "settings.h"
 #include "controller.h"
 
 /*
@@ -38,21 +38,22 @@
 // Init any sort of AI stuff here
 void carinit(struct Car *car) {
 
-	#define RANDOMBIAS() (decimal)(rand() % 2000 - 1000) / 1000
+	#define RANDOMBIAS() ((decimal)rand() / (decimal)RAND_MAX)
 
 	car->nodelen = INPUTNODES + OUTPUTNODES + (LAYERS * NODESPERLAYER);
 	car->node    = malloc(car->nodelen * sizeof(struct Node));
 
 	for (unsigned int i = 0; i < car->nodelen; ++i) {
 		car->node[i].destlen = 0;
+		car->node[i].bias    = (RANDOMBIAS());
 	}
 	
 	for (unsigned int i = 0; i < INPUTNODES; ++i) {
 		car->node[i].destlen = NODESPERLAYER;
 		car->node[i].dest    = malloc(NODESPERLAYER * sizeof(struct Nodeconnection));
 		for (unsigned int m = 0; m < NODESPERLAYER; ++m) {
-			car->node[i].dest[m].i    = INPUTNODES + m;
-			car->node[i].dest[m].bias = RANDOMBIAS();
+			car->node[i].dest[m].i      = INPUTNODES + m;
+			car->node[i].dest[m].weight = RANDOMBIAS();
 		}
 	}
 
@@ -61,8 +62,8 @@ void carinit(struct Car *car) {
 			car->node[INPUTNODES + i * NODESPERLAYER + m].destlen = NODESPERLAYER;
 			car->node[INPUTNODES + i * NODESPERLAYER + m].dest    = malloc(NODESPERLAYER * sizeof(struct Nodeconnection));
 			for (unsigned int j = 0; j < NODESPERLAYER; ++j) {
-				car->node[INPUTNODES + i * NODESPERLAYER + m].dest[j].i    = i * NODESPERLAYER + NODESPERLAYER + INPUTNODES + j;
-				car->node[INPUTNODES + i * NODESPERLAYER + m].dest[j].bias = RANDOMBIAS();
+				car->node[INPUTNODES + i * NODESPERLAYER + m].dest[j].i      = i * NODESPERLAYER + NODESPERLAYER + INPUTNODES + j;
+				car->node[INPUTNODES + i * NODESPERLAYER + m].dest[j].weight = RANDOMBIAS();
 			}
 		}
 	}
@@ -72,8 +73,8 @@ void carinit(struct Car *car) {
 			car->node[i + m].destlen = OUTPUTNODES;
 			car->node[i + m].dest    = malloc(OUTPUTNODES * sizeof(struct Nodeconnection));
 			for (unsigned int j = 0; j < OUTPUTNODES; ++j) {
-				car->node[i + m].dest[j].i    = i + j + NODESPERLAYER;
-				car->node[i + m].dest[j].bias = RANDOMBIAS();
+				car->node[i + m].dest[j].i      = i + j + NODESPERLAYER;
+				car->node[i + m].dest[j].weight = RANDOMBIAS();
 			}
 		}
 	}
@@ -122,15 +123,17 @@ void carinit(struct Car *car) {
 
 void carcontroller(struct Car *car) {
 
-	#define EYENORMALIZE(a) (((decimal)(a) / (MAXEYEVAL / 2)) - 1)
+	#define EYENORMALIZE(a) ((decimal)(a) / MAXEYEVAL)
 
 	car->node[0].val = EYENORMALIZE(car->eyes.left);
 	car->node[1].val = EYENORMALIZE(car->eyes.right);
-	car->node[2].val = EYENORMALIZE(car->eyes.forward);
+	car->node[2].val = EYENORMALIZE(car->eyes.softleft);
+	car->node[3].val = EYENORMALIZE(car->eyes.softright);
+	car->node[4].val = EYENORMALIZE(car->eyes.forward);
 	// car->node[3].val = car->forwardvel;
-	// car->node[3].val = (car->dir / 180) - 1;
+	// car->node[3].val = (car->dir / 360);
 
-	for (unsigned int i = 5; i < car->nodelen; ++i) { 
+	for (unsigned int i = INPUTNODES; i < car->nodelen; ++i) { 
 		car->node[i].val = 0;
 		car->node[i].vallen = 0;
 	}
@@ -138,10 +141,12 @@ void carcontroller(struct Car *car) {
 	for (unsigned int i = 0; i < car->nodelen; ++i) {
 		if (i > INPUTNODES - 1) {
 			car->node[i].val /= car->node[i].vallen;
+			if (car->node[i].val > 1) car->node[i].val = 1;
+			if (car->node[i].val < 0) car->node[i].val = 0;
 		}
 		for (unsigned int m = 0; m < car->node[i].destlen; ++m) {
 			car->node[car->node[i].dest[m].i].vallen++;
-			car->node[car->node[i].dest[m].i].val += (car->node[i].val + car->node[i].dest[m].bias) / 2;
+			car->node[car->node[i].dest[m].i].val += (car->node[i].val * car->node[i].dest[m].weight) + car->node[car->node[i].dest[m].i].bias;
 			// if (car->node[i].val != 0) {
 				// printf("%f\n", car->node[i].val * car->node[i].dest[m].bias);
 			// }
@@ -154,10 +159,10 @@ void carcontroller(struct Car *car) {
 	} else {
 		car->controller.left  = 0;
 		car->controller.right = 1;
-	}*/ // lmao baby mode car control
-	car->controller.left    = (car->node[car->nodelen - 3].val > 0) ? 1 : 0;
-	car->controller.right   = (car->node[car->nodelen - 2].val > 0) ? 1 : 0;
-	car->controller.forward = (car->node[car->nodelen - 1].val > 0) ? 1 : 0;
+	}*/
+	car->controller.left    = (car->node[car->nodelen - 2].val < 0.5) ? 1 : 0;
+	car->controller.right   = (car->node[car->nodelen - 1].val < 0.5) ? 1 : 0;
+	car->controller.forward = (car->node[car->nodelen - 0].val < 0.5) ? 1 : 0;
 	// printf("%f\n", car->node[car->nodelen - 1].val);
 
 }

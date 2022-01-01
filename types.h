@@ -3,45 +3,15 @@
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
-
-#define RAD(deg) (deg * 0.01745329)
-#define DEG(rad) (rad * 57.29578)
-
-# define GENERATIONSIZE 500
-# define GENERATIONTIMEOUT 150
-
-#define MAXEYEVAL 10
-
-#define STARTX 80
-#define STARTY 470
-#define STARTDIR 270
-
-#define WINDOWX 680
-#define WINDOWY 480
-
-#define BARRIERCOLOR  0xFF111111
-#define ROADCOLOR     0xFF555555
-#define GRASSCOLOR    0xFF00DD00
-
-/* 
-	eye left
-	eye right
-	eye forward
-	dir
-*/
-#define INPUTNODES 3
-/*
-	controller left
-	controller right
-	controller forward
-*/
-#define OUTPUTNODES 3
-#define LAYERS 2
-#define NODESPERLAYER 5
-
-#define MUTATIONCHANCE 50
+#include <pthread.h>
 
 typedef double decimal;
+
+// decimal sigmoid (decimal x) { return 1 / (1 + exp(-x)); }
+// decimal dsigmoid(decimal x) { return x * (1 - x);       }
+
+#define RAD(deg) ((deg) * 0.01745329)
+#define DEG(rad) ((rad) * 57.29578  )
 
 struct Pos {
 	decimal x;
@@ -59,6 +29,8 @@ struct Eyes {
 	unsigned int forward;
 	unsigned int left;
 	unsigned int right;
+	unsigned int softleft;
+	unsigned int softright;
 };
 
 struct Physics {
@@ -74,12 +46,13 @@ struct Physics {
 
 struct Nodeconnection {
 	unsigned int i;
-	decimal bias;
+	decimal weight;
 };
 
 struct Node {
 	unsigned int vallen;
 	decimal val;
+	decimal bias;
 	unsigned int destlen;
 	struct Nodeconnection *dest;
 };
@@ -100,9 +73,17 @@ struct Car {
 	// unsigned int skidlen;
 	// struct Pos skidpos[50];
 	unsigned int aienabled;
-	unsigned int fitness;
+	unsigned int maxroadval;
+	decimal fitness;
 	unsigned int nodelen;
 	struct Node *node;
+};
+
+struct Thread {
+	pthread_t thread;
+	unsigned int id;
+	struct Car *start;
+	unsigned int size;
 };
 
 struct Map {
