@@ -34,7 +34,6 @@ struct Eyes {
 };
 
 struct Physics {
-	decimal grassfriction;
 	decimal roadfriction;
 	decimal accel;
 	decimal forwardaccel;
@@ -60,6 +59,7 @@ struct Node {
 struct Car {
 	unsigned int id;
 	unsigned int sprite;
+	unsigned int alive;
 	struct Controller controller;
 	struct Eyes eyes;
 	struct Physics physics;

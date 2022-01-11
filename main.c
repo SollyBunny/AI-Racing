@@ -12,7 +12,7 @@
 #include "controller.h"
 
 unsigned int tick = 0;
-unsigned int ticksperframe = 20;
+unsigned int ticksperframe = DEFAULTTICKSPERFRAME;
 
 struct Thread* threads;	
 unsigned int   threadsdone = 0;
@@ -53,6 +53,7 @@ struct Map map;
 unsigned int maxfitnessid = 0;
 decimal maxfitness = 0;
 unsigned int generation = 0;
+unsigned int carsalive = GENERATIONSIZE;
 
 void carinfo(struct Car *car) {
 	#if _WIN32
@@ -64,12 +65,13 @@ void carinfo(struct Car *car) {
 		FillConsoleOutputCharacter(windows_hConsole, (TCHAR)' ', cellCount, (COORD){0, 0}, &count);
 		FillConsoleOutputAttribute(windows_hConsole, csbi.wAttributes, cellCount, (COORD){0, 0}, &count);
 		SetConsoleCursorPosition(windows_hConsole, (COORD){0, 0});
-		printf("Tick: %d\nGeneration: %d\nId: %d\nFitness: %f Maxfitness: %f\nPosition: (%f, %f)\nVelocity: (%f, %f)\nEyes: <: %*d ^: %*d >: %*d\nController: %c%c%c\n", 
+		printf("Tick: %d\nGeneration: %d\nCars Alive: %d\nId: %d\nFitness: %f Maxfitness: %f\nPosition: (%f, %f)\nVelocity: (%f, %f)\nEyes: <: %*d ^: %*d >: %*d\nController: %c%c%c\n", 
 	#else
-		printf("\x1b[2J\x1b[HTick: %d\nGeneration: %d\nId: %d\nFitness: %f Maxfitness: %f\nPosition: (%f, %f)\nVelocity: (%f, %f)\nEyes: ←: %*d ↑: %*d → : %*d\nController: %s%s%s\n", 
+		printf("\x1b[2J\x1b[HTick: %d\nGeneration: %d\nCars Alive: %d\nId: %d\nFitness: %f Maxfitness: %f\nPosition: (%f, %f)\nVelocity: (%f, %f)\nEyes: ←: %*d ↑: %*d → : %*d\nController: %s%s%s\n", 
 	#endif
 		tick,
 		generation,
+		carsalive,
 		car->id,
 		car->fitness, maxfitness,
 		car->pos.x, car->pos.y,
@@ -88,30 +90,32 @@ void carinfo(struct Car *car) {
 	#endif
 	);
 
-	putchar('\n');
-	for (unsigned int i = 0; i < car->nodelen; ++i) {
-		printf("%d: %f dest:", i, car->node[i].val);
-		for (unsigned int m = 0; m < car->node[i].destlen; ++m) {
-			printf("%d:%f, ", car->node[i].dest[m].i, car->node[i].dest[m].weight);
-		}
+	#ifdef SHOWBRAIN
+
 		putchar('\n');
-		if (
-			i == INPUTNODES - 1 ||
-			i == NODESPERLAYER * LAYERS + INPUTNODES - 1 ||
-			(i > INPUTNODES - 1 &&
-				(i - INPUTNODES + 1) % NODESPERLAYER == 0
-			)
-		) {
+		for (unsigned int i = 0; i < car->nodelen; ++i) {
+			printf("%d: %f dest:", i, car->node[i].val);
+			for (unsigned int m = 0; m < car->node[i].destlen; ++m) {
+				printf("%d:%f, ", car->node[i].dest[m].i, car->node[i].dest[m].weight);
+			}
 			putchar('\n');
+			if (
+				i == INPUTNODES - 1 ||
+				i == NODESPERLAYER * LAYERS + INPUTNODES - 1 ||
+				(i > INPUTNODES - 1 &&
+					(i - INPUTNODES + 1) % NODESPERLAYER == 0
+				)
+			) {
+				putchar('\n');
+			}
 		}
-	}
+
+	#endif
 	
 }
 
 void carclean(struct Car *car) {
 	car->eyes.resolution          = EYERESOLUTION;
-	car->physics.grassfriction    = GRASSFRICTION;
-	car->physics.roadfriction     = ROADFRICTION;
 	car->physics.accel            = ACCEL;
 	car->physics.forwardaccel     = FORWARDACCEL;
 	car->physics.wheeldirfriction = WHEELDIRFRICTION;
@@ -140,7 +144,9 @@ void carresetpos(struct Car *car) {
 	// car->skidlen = 0;
 	car->maxroadval = 0;
 	car->fitness = 0;
+	car->alive = 1;
 }
+
 void carframe(struct Car *car) {
 
 	unsigned int _MAPVALUE_pos;
@@ -163,11 +169,11 @@ void carframe(struct Car *car) {
 
 	// dampen velocity cuz eee
 		// check if on road or grass
-		if (MAPVALUE(car->pos.x, car->pos.y) == 0) {
-			car->vel.x *= car->physics.grassfriction;
-			car->vel.y *= car->physics.grassfriction;
-			car->forwardvel *= car->physics.grassfriction;
-		} else if (MAPVALUE(car->pos.x, car->pos.y) == 1) {
+		MAPVALUE(car->pos.x, car->pos.y); // hehe janky
+		if (_MAPVALUE_pos == 0) {
+			car->alive = 1;
+			// return;
+		} else if (_MAPVALUE_pos == 1) {
 			car->vel.x = 0;
 			car->vel.y = 0;
 			car->forwardvel = 0;
@@ -273,12 +279,6 @@ void carframe(struct Car *car) {
 			add.y += car->eyes.resolution * cos(RAD(car->dir - 45));
 			if ((++car->eyes.softright) > MAXEYEVAL) break;
 		}
-		
-		// printf("Forward: %d\nLeft: %d\nRight: %d\n",
-			// car->eyes.forward,
-			// car->eyes.left,
-			// car->eyes.right
-		// );
 
 	// calculate skid marks
 		// if (car->skid > 0) {
@@ -384,6 +384,7 @@ void carrender(struct Car *car, SDL_Texture *car_asset, SDL_Rect *car_size, SDL_
 }
 
 void cargeneration(struct Car* car) {
+	carsalive = GENERATIONSIZE;
 	++generation;
 	maxfitness = 0;
 	for (unsigned int i = 0; i < GENERATIONSIZE; ++i) {
@@ -438,7 +439,17 @@ void threadfunc(struct Thread *thread) {
 	}
 	for (unsigned int i = 0; i < tickstodo; ++i) {
 		for (unsigned int m = 0; m < thread->size; ++m) {
-			carframe(thread->start + m); // some janky pointer stuff going on here, lets hope it works
+			if (carsalive == 0) {
+				return;
+			}
+			if ((thread->start + m)->alive) {
+				carframe(thread->start + m);
+				if (!(thread->start + m)->alive) { // car has died lmao :P
+					carsalive--;
+					return;
+				}
+			}
+			// some janky pointer stuff going on here, lets hope it works
 		}
 	}
 }
@@ -692,7 +703,10 @@ int main(int argc, char *argv[]) {
 					for (unsigned int m = 0; m < PROCESSES; ++m) {
 						pthread_join(threads[m].thread, NULL);
 					}
-					if (ticksperframe >= GENERATIONTIME) {
+					if (
+						(carsalive == 0) ||
+						(ticksperframe >= GENERATIONTIME)
+					) {
 						cargeneration(car);
 						if (i < (ticksperframe / GENERATIONTIME)) {
 							for (unsigned int i = 0; i < GENERATIONSIZE; ++i) {
@@ -721,8 +735,11 @@ int main(int argc, char *argv[]) {
 
 				// render cars
 					for (unsigned int i = 0; i < GENERATIONSIZE; ++i) { 
-						if (i != maxfitnessid)
-							carrender(&car[i], car_asset, car_size, car_pos);
+						if (i != maxfitnessid) {
+							if (car[i].alive == 1) {
+								carrender(&car[i], car_asset, car_size, car_pos);
+							}
+						}
 					}
 					carrender(&car[maxfitnessid], car_asset, car_size, car_pos);
 

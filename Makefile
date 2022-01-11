@@ -19,11 +19,10 @@ else
 endif
 
 run:
-	-cd build && ./racer
+	-(cd build && ./racer)
+
 
 run_winblows:
 ifeq ($(OS),Windows_NT)
-	-cd build && start racer.exe
-else
 	-cd build && wine ./racer.exe
 endif

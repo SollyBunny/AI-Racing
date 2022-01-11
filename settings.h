@@ -1,12 +1,15 @@
 
 #include "types.h"
 
+// Terminal Settings
+	// #define SHOWBRAIN
+
 // Map settins
 	#define WINDOWX               680
 	#define WINDOWY               480
 
 	#define STARTX                90
-	#define STARTY                470
+	#define STARTY                450
 	#define STARTDIR              270
 
 	#define BARRIERCOLOR          0xFF111111
@@ -21,18 +24,18 @@
 //
 
 // Generation Settings
-	#define GENERATIONSIZE        5000
-	#define GENERATIONTIME        400
+	#define GENERATIONSIZE        500
+	#define GENERATIONTIME        100
+	#define DEFAULTTICKSPERFRAME  1
 
-	#define PROCESSES             10
+	#define PROCESSES             1
 //
 
 // Physics Settings
 	#define EYERESOLUTION         5 // The resolution of the eye raytracer
 	#define MAXEYEVAL             40 // maxeyeval = MAXEYEVAL * EYERESOLUTION
-	#define GRASSFRICTION         0
-	#define ROADFRICTION          0.9
-	#define ACCEL                 1.5
+	#define ROADFRICTION          0.8
+	#define ACCEL                 2
 	#define FORWARDACCEL          0.01 // (internal value used for calculation)
 	#define WHEELDIRFRICTION      0.5
 	#define WHEELDIRACCEL         20
@@ -58,8 +61,8 @@
 	*/ // Probably shoudn't change this
 	#define OUTPUTNODES 3
 
-	#define LAYERS 2
-	#define NODESPERLAYER 4
+	#define LAYERS 1
+	#define NODESPERLAYER 3
 
 	#define MUTATIONCHANCE 1
 //
