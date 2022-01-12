@@ -122,6 +122,7 @@ void carclean(struct Car *car) {
 	car->physics.wheeldiraccel    = WHEELDIRACCEL;
 	car->physics.wheelmaxdir      = WHEELMAXDIR;
 	car->physics.wheelturnback    = WHEELTURNBACK;
+	car->physics.roadfriction     = ROADFRICTION;
 	car->aienabled = 1;
 }
 
@@ -169,17 +170,17 @@ void carframe(struct Car *car) {
 
 	// dampen velocity cuz eee
 		// check if on road or grass
-		MAPVALUE(car->pos.x, car->pos.y); // hehe janky
+		_MAPVALUE_pos = MAPVALUE(car->pos.x, car->pos.y); // hehe janky
 		if (_MAPVALUE_pos == 0) {
-			car->alive = 1;
-			// return;
+			car->alive = 0;
+			return;
 		} else if (_MAPVALUE_pos == 1) {
 			car->vel.x = 0;
 			car->vel.y = 0;
 			car->forwardvel = 0;
 		} else {
-			car->vel.x *= car->physics.roadfriction;
-			car->vel.y *= car->physics.roadfriction;
+			car->vel.x      *= car->physics.roadfriction;
+			car->vel.y      *= car->physics.roadfriction;
 			car->forwardvel *= car->physics.roadfriction;
 		}
 	
@@ -200,21 +201,21 @@ void carframe(struct Car *car) {
 		else if (car->dir > 360) car->dir -= 360;
 
 	// debug bounds check
-		if (car->pos.x < 0) {
-			car->vel.x *= -1;
-			car->pos.x = 0;
-		} else if (car->pos.x > WINDOWX - 30) {
-			car->vel.x *= -1;
-			car->pos.x = WINDOWX - 30;
-		}
+		// if (car->pos.x < 0) {
+		// 	car->vel.x *= -1;
+		// 	car->pos.x = 0;
+		// } else if (car->pos.x > WINDOWX - 30) {
+		// 	car->vel.x *= -1;
+		// 	car->pos.x = WINDOWX - 30;
+		// }
 		
-		if (car->pos.y < 0) {
-			car->vel.y *= -1;
-			car->pos.y = 0;
-		} else if (car->pos.y > WINDOWY - 30) {
-			car->vel.y *= -1;
-			car->pos.y = WINDOWY - 30;
-		}
+		// if (car->pos.y < 0) {
+		// 	car->vel.y *= -1;
+		// 	car->pos.y = 0;
+		// } else if (car->pos.y > WINDOWY - 30) {
+		// 	car->vel.y *= -1;
+		// 	car->pos.y = WINDOWY - 30;
+		// }
 
 	// move forward car cuz of its momentum
 		car->pos.x += car->vel.x;
@@ -302,9 +303,7 @@ void carframe(struct Car *car) {
 	// Get next ticks controlls
 		// if (car->fitness > 0 && (car->forwardvel < 0.5)) {
 			// car->fitness--;
-		if (MAPVALUE(car->pos.x, car->pos.y) == 0) {
-			// car->fitness -= 1;
-		} else if (MAPVALUE(car->pos.x, car->pos.y) > car->maxroadval) {
+		if (MAPVALUE(car->pos.x, car->pos.y) > car->maxroadval) {
 			car->maxroadval = MAPVALUE(car->pos.x, car->pos.y);
 			car->fitness += 5;
 			car->fitness += car->forwardvel * 0.1;
@@ -327,6 +326,7 @@ void carframe(struct Car *car) {
 void carrender(struct Car *car, SDL_Texture *car_asset, SDL_Rect *car_size, SDL_Rect *car_pos) {
 
 	// render car
+	
 		SDL_SetRenderDrawColor(m_window_renderer, 255, 255, 255, 255);
 		car_pos->x = (unsigned int)car->pos.x - car_pos->w / 2;
 		car_pos->y = (unsigned int)car->pos.y - car_pos->h / 2;
@@ -384,7 +384,6 @@ void carrender(struct Car *car, SDL_Texture *car_asset, SDL_Rect *car_size, SDL_
 }
 
 void cargeneration(struct Car* car) {
-	carsalive = GENERATIONSIZE;
 	++generation;
 	maxfitness = 0;
 	for (unsigned int i = 0; i < GENERATIONSIZE; ++i) {
@@ -405,21 +404,13 @@ void cargeneration(struct Car* car) {
 			if (car[i].node[m].destlen != 0) {
 				car[i].node[m].bias    = car[maxfitnessid].node[m].bias;
 				if (rand() % 100 <= MUTATIONCHANCE) {
-					car[i].node[m].bias += (
-						(decimal)((rand() % 20000) - 10000) / 1000
-					);
-					if      (car[i].node[m].bias > 1) car[i].node[m].bias = 1;
-					else if (car[i].node[m].bias < 0) car[i].node[m].bias = 0;
+					car[i].node[m].bias = asigmoid(car[i].node[m].bias + RANDOMDECIMAL());
 				}
 				car[i].node[m].dest    = realloc(car[i].node[m].dest, car[i].node[m].destlen * sizeof(struct Nodeconnection));
 				for (unsigned int j = 0; j < car[i].node[m].destlen; ++j) {
 					car[i].node[m].dest[j].weight = car[maxfitnessid].node[m].dest[j].weight;
 					if (rand() % 100 <= MUTATIONCHANCE) {
-						car[i].node[m].dest[j].weight += (
-							(decimal)((rand() % 20000) - 10000) / 1000
-						);
-						if      (car[i].node[m].dest[j].weight > 1) car[i].node[m].dest[j].weight = 1;
-						else if (car[i].node[m].dest[j].weight < 0) car[i].node[m].dest[j].weight = 0;
+						car[i].node[m].dest[j].weight = asigmoid(car[i].node[m].dest[j].weight + RANDOMDECIMAL());
 					}
 				}
 			}
@@ -439,14 +430,14 @@ void threadfunc(struct Thread *thread) {
 	}
 	for (unsigned int i = 0; i < tickstodo; ++i) {
 		for (unsigned int m = 0; m < thread->size; ++m) {
-			if (carsalive == 0) {
+			if (carsalive == 0)
 				return;
-			}
 			if ((thread->start + m)->alive) {
 				carframe(thread->start + m);
-				if (!(thread->start + m)->alive) { // car has died lmao :P
+				if ((thread->start + m)->alive == 0) { // car has died lmao :P
 					carsalive--;
-					return;
+					if (carsalive == 0)
+						return;
 				}
 			}
 			// some janky pointer stuff going on here, lets hope it works
@@ -703,15 +694,15 @@ int main(int argc, char *argv[]) {
 					for (unsigned int m = 0; m < PROCESSES; ++m) {
 						pthread_join(threads[m].thread, NULL);
 					}
-					if (
-						(carsalive == 0) ||
-						(ticksperframe >= GENERATIONTIME)
-					) {
+					if (carsalive == 0) {
+						cargeneration(car);
+					} else if (ticksperframe >= GENERATIONTIME) {
 						cargeneration(car);
 						if (i < (ticksperframe / GENERATIONTIME)) {
-							for (unsigned int i = 0; i < GENERATIONSIZE; ++i) {
-					        	carresetpos(&car[i]);
+							for (unsigned int j = 0; j < GENERATIONSIZE; ++j) {
+					        	carresetpos(&car[j]);
 					        }
+							carsalive = GENERATIONSIZE;
 				        }
 					} else {
 						tick += ticksperframe;
@@ -741,7 +732,7 @@ int main(int argc, char *argv[]) {
 							}
 						}
 					}
-					carrender(&car[maxfitnessid], car_asset, car_size, car_pos);
+					carrender(&car[maxfitnessid], car_asset, car_size, car_pos); // Render best car regardless if its alive or not
 
 				// Render fps
 					// for (int i = 1; i < intsize(fps) + 1; ++i) {
@@ -762,11 +753,15 @@ int main(int argc, char *argv[]) {
 					carinfo(&car[maxfitnessid]);
 				}
 
+				// reset pos after render
+				if (carsalive == 0) goto resetpos;
 				if (tick >= GENERATIONTIME) {
 					tick = 0;
-			        for (unsigned int i = 0; i < GENERATIONSIZE; ++i) {
-			        	carresetpos(&car[i]);
-			        }
+					resetpos:
+						for (unsigned int i = 0; i < GENERATIONSIZE; ++i) {
+							carresetpos(&car[i]);
+						}
+						carsalive = GENERATIONSIZE;
 				}	
 
 			// Fps

@@ -25,7 +25,7 @@
 
 // Generation Settings
 	#define GENERATIONSIZE        500
-	#define GENERATIONTIME        100
+	#define GENERATIONTIME        1000
 	#define DEFAULTTICKSPERFRAME  1
 
 	#define PROCESSES             1
@@ -34,8 +34,8 @@
 // Physics Settings
 	#define EYERESOLUTION         5 // The resolution of the eye raytracer
 	#define MAXEYEVAL             40 // maxeyeval = MAXEYEVAL * EYERESOLUTION
-	#define ROADFRICTION          0.8
-	#define ACCEL                 2
+	#define ROADFRICTION          0.7
+	#define ACCEL                 3
 	#define FORWARDACCEL          0.01 // (internal value used for calculation)
 	#define WHEELDIRFRICTION      0.5
 	#define WHEELDIRACCEL         20
@@ -62,7 +62,7 @@
 	#define OUTPUTNODES 3
 
 	#define LAYERS 1
-	#define NODESPERLAYER 3
+	#define NODESPERLAYER 20
 
 	#define MUTATIONCHANCE 1
 //

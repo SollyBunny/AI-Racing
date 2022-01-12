@@ -7,11 +7,13 @@
 
 typedef double decimal;
 
-// decimal sigmoid (decimal x) { return 1 / (1 + exp(-x)); }
+decimal asigmoid (decimal x) { return 2 / (1 + exp(x)) - 1; }
 // decimal dsigmoid(decimal x) { return x * (1 - x);       }
 
 #define RAD(deg) ((deg) * 0.01745329)
 #define DEG(rad) ((rad) * 57.29578  )
+
+#define RANDOMDECIMAL() (((decimal)rand() / (decimal)RAND_MAX) - 0.5)
 
 struct Pos {
 	decimal x;

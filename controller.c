@@ -38,14 +38,12 @@
 // Init any sort of AI stuff here
 void carinit(struct Car *car) {
 
-	#define RANDOMBIAS() ((decimal)rand() / (decimal)RAND_MAX)
-
 	car->nodelen = INPUTNODES + OUTPUTNODES + (LAYERS * NODESPERLAYER);
 	car->node    = malloc(car->nodelen * sizeof(struct Node));
 
 	for (unsigned int i = 0; i < car->nodelen; ++i) {
 		car->node[i].destlen = 0;
-		car->node[i].bias    = (RANDOMBIAS());
+		car->node[i].bias    = (RANDOMDECIMAL());
 	}
 	
 	for (unsigned int i = 0; i < INPUTNODES; ++i) {
@@ -53,7 +51,7 @@ void carinit(struct Car *car) {
 		car->node[i].dest    = malloc(NODESPERLAYER * sizeof(struct Nodeconnection));
 		for (unsigned int m = 0; m < NODESPERLAYER; ++m) {
 			car->node[i].dest[m].i      = INPUTNODES + m;
-			car->node[i].dest[m].weight = RANDOMBIAS();
+			car->node[i].dest[m].weight = RANDOMDECIMAL();
 		}
 	}
 
@@ -63,7 +61,7 @@ void carinit(struct Car *car) {
 			car->node[INPUTNODES + i * NODESPERLAYER + m].dest    = malloc(NODESPERLAYER * sizeof(struct Nodeconnection));
 			for (unsigned int j = 0; j < NODESPERLAYER; ++j) {
 				car->node[INPUTNODES + i * NODESPERLAYER + m].dest[j].i      = i * NODESPERLAYER + NODESPERLAYER + INPUTNODES + j;
-				car->node[INPUTNODES + i * NODESPERLAYER + m].dest[j].weight = RANDOMBIAS();
+				car->node[INPUTNODES + i * NODESPERLAYER + m].dest[j].weight = RANDOMDECIMAL();
 			}
 		}
 	}
@@ -74,7 +72,7 @@ void carinit(struct Car *car) {
 			car->node[i + m].dest    = malloc(OUTPUTNODES * sizeof(struct Nodeconnection));
 			for (unsigned int j = 0; j < OUTPUTNODES; ++j) {
 				car->node[i + m].dest[j].i      = i + j + NODESPERLAYER;
-				car->node[i + m].dest[j].weight = RANDOMBIAS();
+				car->node[i + m].dest[j].weight = RANDOMDECIMAL();
 			}
 		}
 	}
@@ -123,15 +121,15 @@ void carinit(struct Car *car) {
 
 void carcontroller(struct Car *car) {
 
-	#define EYENORMALIZE(a) ((decimal)(a) / MAXEYEVAL)
+	#define EYENORMALIZE(a) (((decimal)(a) / MAXEYEVAL) - 0.5)
 
 	car->node[0].val = EYENORMALIZE(car->eyes.left);
 	car->node[1].val = EYENORMALIZE(car->eyes.right);
 	car->node[2].val = EYENORMALIZE(car->eyes.softleft);
 	car->node[3].val = EYENORMALIZE(car->eyes.softright);
 	car->node[4].val = EYENORMALIZE(car->eyes.forward);
-	// car->node[3].val = car->forwardvel;
-	// car->node[3].val = (car->dir / 360);
+	// car->node[5].val = car->forwardvel;
+	// car->node[6].val = (car->dir / 360);
 
 	for (unsigned int i = INPUTNODES; i < car->nodelen; ++i) { 
 		car->node[i].val = 0;
@@ -160,9 +158,9 @@ void carcontroller(struct Car *car) {
 		car->controller.left  = 0;
 		car->controller.right = 1;
 	}*/
-	car->controller.left    = (car->node[car->nodelen - 2].val < 0.5) ? 1 : 0;
-	car->controller.right   = (car->node[car->nodelen - 1].val < 0.5) ? 1 : 0;
-	car->controller.forward = (car->node[car->nodelen - 0].val < 0.5) ? 1 : 0;
+	car->controller.left    = (car->node[car->nodelen - 2].val < 0) ? 1 : 0;
+	car->controller.right   = (car->node[car->nodelen - 1].val < 0) ? 1 : 0;
+	car->controller.forward = (car->node[car->nodelen - 0].val < 0) ? 1 : 0;
 	// printf("%f\n", car->node[car->nodelen - 1].val);
 
 }
