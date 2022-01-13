@@ -404,13 +404,13 @@ void cargeneration(struct Car* car) {
 			if (car[i].node[m].destlen != 0) {
 				car[i].node[m].bias    = car[maxfitnessid].node[m].bias;
 				if (rand() % 100 <= MUTATIONCHANCE) {
-					car[i].node[m].bias = asigmoid(car[i].node[m].bias + RANDOMDECIMAL());
+					car[i].node[m].bias = SIGMOID(car[i].node[m].bias + RANDOMDECIMAL());
 				}
 				car[i].node[m].dest    = realloc(car[i].node[m].dest, car[i].node[m].destlen * sizeof(struct Nodeconnection));
 				for (unsigned int j = 0; j < car[i].node[m].destlen; ++j) {
 					car[i].node[m].dest[j].weight = car[maxfitnessid].node[m].dest[j].weight;
 					if (rand() % 100 <= MUTATIONCHANCE) {
-						car[i].node[m].dest[j].weight = asigmoid(car[i].node[m].dest[j].weight + RANDOMDECIMAL());
+						car[i].node[m].dest[j].weight = SIGMOID(car[i].node[m].dest[j].weight + RANDOMDECIMAL());
 					}
 				}
 			}

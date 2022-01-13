@@ -7,7 +7,7 @@
 
 typedef double decimal;
 
-decimal asigmoid (decimal x) { return 2 / (1 + exp(x)) - 1; }
+#define SIGMOID(x) (2 / (1 + exp(x)) - 1)
 // decimal dsigmoid(decimal x) { return x * (1 - x);       }
 
 #define RAD(deg) ((deg) * 0.01745329)

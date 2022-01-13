@@ -121,7 +121,7 @@ void carinit(struct Car *car) {
 
 void carcontroller(struct Car *car) {
 
-	#define EYENORMALIZE(a) (((decimal)(a) / MAXEYEVAL) - 0.5)
+	#define EYENORMALIZE(a) (((decimal)(a) / MAXEYEVAL * 2) - 1)
 
 	car->node[0].val = EYENORMALIZE(car->eyes.left);
 	car->node[1].val = EYENORMALIZE(car->eyes.right);
@@ -139,8 +139,9 @@ void carcontroller(struct Car *car) {
 	for (unsigned int i = 0; i < car->nodelen; ++i) {
 		if (i > INPUTNODES - 1) {
 			car->node[i].val /= car->node[i].vallen;
-			if (car->node[i].val > 1) car->node[i].val = 1;
-			if (car->node[i].val < 0) car->node[i].val = 0;
+			if      (car->node[i].val > 1 ) car->node[i].val = 1;
+			else if (car->node[i].val < -1) car->node[i].val = -1;
+			// car->node[i].val = SIGMOID(car->node[i].vallen);
 		}
 		for (unsigned int m = 0; m < car->node[i].destlen; ++m) {
 			car->node[car->node[i].dest[m].i].vallen++;
@@ -158,9 +159,9 @@ void carcontroller(struct Car *car) {
 		car->controller.left  = 0;
 		car->controller.right = 1;
 	}*/
-	car->controller.left    = (car->node[car->nodelen - 2].val < 0) ? 1 : 0;
-	car->controller.right   = (car->node[car->nodelen - 1].val < 0) ? 1 : 0;
-	car->controller.forward = (car->node[car->nodelen - 0].val < 0) ? 1 : 0;
+	car->controller.left    = (car->node[car->nodelen - 2].val > 0) ? 1 : 0;
+	car->controller.right   = (car->node[car->nodelen - 1].val > 0) ? 1 : 0;
+	car->controller.forward = (car->node[car->nodelen - 0].val > 0) ? 1 : 0;
 	// printf("%f\n", car->node[car->nodelen - 1].val);
 
 }

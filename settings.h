@@ -2,7 +2,7 @@
 #include "types.h"
 
 // Terminal Settings
-	// #define SHOWBRAIN
+	#define SHOWBRAIN
 
 // Map settins
 	#define WINDOWX               680
@@ -62,7 +62,7 @@
 	#define OUTPUTNODES 3
 
 	#define LAYERS 1
-	#define NODESPERLAYER 20
+	#define NODESPERLAYER 3
 
 	#define MUTATIONCHANCE 1
 //
