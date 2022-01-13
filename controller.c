@@ -159,9 +159,9 @@ void carcontroller(struct Car *car) {
 		car->controller.left  = 0;
 		car->controller.right = 1;
 	}*/
-	car->controller.left    = (car->node[car->nodelen - 2].val > 0) ? 1 : 0;
-	car->controller.right   = (car->node[car->nodelen - 1].val > 0) ? 1 : 0;
-	car->controller.forward = (car->node[car->nodelen - 0].val > 0) ? 1 : 0;
+	car->controller.left    = (car->node[car->nodelen - 3].val > 0) ? 1 : 0;
+	car->controller.right   = (car->node[car->nodelen - 2].val > 0) ? 1 : 0;
+	car->controller.forward = (car->node[car->nodelen - 1].val > 0) ? 1 : 0;
 	// printf("%f\n", car->node[car->nodelen - 1].val);
 
 }

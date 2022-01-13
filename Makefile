@@ -23,6 +23,4 @@ run:
 
 
 run_winblows:
-ifeq ($(OS),Windows_NT)
 	-cd build && wine ./racer.exe
-endif

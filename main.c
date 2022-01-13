@@ -137,7 +137,7 @@ void carresetpos(struct Car *car) {
 	car->pos.y = STARTY;//WINDOWY / 2;
 	car->vel.x = 0;
 	car->vel.y = 0;
-	car->forwardvel = 0;
+	car->forwardvel = FORWARDACCEL;
 	car->wheeldir = 0;
 	car->wheeldirvel = 0;
 	car->dir = STARTDIR;
@@ -171,17 +171,18 @@ void carframe(struct Car *car) {
 	// dampen velocity cuz eee
 		// check if on road or grass
 		_MAPVALUE_pos = MAPVALUE(car->pos.x, car->pos.y); // hehe janky
-		if (_MAPVALUE_pos == 0) {
+		if (_MAPVALUE_pos <= 1) {
 			car->alive = 0;
 			return;
-		} else if (_MAPVALUE_pos == 1) {
-			car->vel.x = 0;
-			car->vel.y = 0;
-			car->forwardvel = 0;
 		} else {
 			car->vel.x      *= car->physics.roadfriction;
 			car->vel.y      *= car->physics.roadfriction;
 			car->forwardvel *= car->physics.roadfriction;
+		}
+
+		if (car->forwardvel < 0.00001) {
+			car->alive = 0;
+			return;
 		}
 	
 	// simulate speed of wheel turn
@@ -428,20 +429,21 @@ void threadfunc(struct Thread *thread) {
 	} else {
 		tickstodo = ticksperframe;
 	}
+	unsigned int tempdeadcars = 0;
 	for (unsigned int i = 0; i < tickstodo; ++i) {
 		for (unsigned int m = 0; m < thread->size; ++m) {
-			if (carsalive == 0)
-				return;
 			if ((thread->start + m)->alive) {
 				carframe(thread->start + m);
-				if ((thread->start + m)->alive == 0) { // car has died lmao :P
-					carsalive--;
-					if (carsalive == 0)
-						return;
+				if ((thread->start + m)->alive == 0) { // car has died :P
+					tempdeadcars++;
 				}
 			}
 			// some janky pointer stuff going on here, lets hope it works
 		}
+		carsalive -= tempdeadcars;
+		tempdeadcars = 0;
+		if (carsalive == 0)
+			return;
 	}
 }
 

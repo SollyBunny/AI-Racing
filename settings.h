@@ -24,11 +24,11 @@
 //
 
 // Generation Settings
-	#define GENERATIONSIZE        500
+	#define GENERATIONSIZE        2000
 	#define GENERATIONTIME        1000
 	#define DEFAULTTICKSPERFRAME  1
 
-	#define PROCESSES             1
+	#define PROCESSES             6
 //
 
 // Physics Settings
@@ -62,7 +62,7 @@
 	#define OUTPUTNODES 3
 
 	#define LAYERS 1
-	#define NODESPERLAYER 3
+	#define NODESPERLAYER 4
 
 	#define MUTATIONCHANCE 1
 //
