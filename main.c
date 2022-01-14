@@ -14,6 +14,8 @@
 unsigned int tick = 0;
 unsigned int ticksperframe = DEFAULTTICKSPERFRAME;
 
+struct Car * car;
+
 struct Thread* threads;	
 unsigned int   threadsdone = 0;
 
@@ -430,6 +432,7 @@ void threadfunc(struct Thread *thread) {
 		tickstodo = ticksperframe;
 	}
 	unsigned int tempdeadcars = 0;
+	unsigned int oldalivecars;
 	for (unsigned int i = 0; i < tickstodo; ++i) {
 		for (unsigned int m = 0; m < thread->size; ++m) {
 			if ((thread->start + m)->alive) {
@@ -440,10 +443,19 @@ void threadfunc(struct Thread *thread) {
 			}
 			// some janky pointer stuff going on here, lets hope it works
 		}
-		carsalive -= tempdeadcars;
-		tempdeadcars = 0;
-		if (carsalive == 0)
+		oldalivecars = carsalive - tempdeadcars;
+		if (oldalivecars == 1) { // if only the best car is left, assume
+			if (car[maxfitnessid].alive == 1) {
+				carsalive = 0;
+				return;
+			}
+		}
+		do {
+			carsalive -= tempdeadcars;
+		} while (carsalive != oldalivecars);
+		if (carsalive == 0) {
 			return;
+		}
 	}
 }
 
@@ -564,7 +576,7 @@ int main(int argc, char *argv[]) {
 		map_pos->h = WINDOWY;
 
 		// Init cars
-			struct Car *car = malloc(GENERATIONSIZE * sizeof(struct Car));
+			car = malloc(GENERATIONSIZE * sizeof(struct Car));
 			for (unsigned int i = 0; i < GENERATIONSIZE; ++i) {
 				carclean(&car[i]);
 				carresetpos(&car[i]);

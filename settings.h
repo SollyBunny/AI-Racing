@@ -8,7 +8,7 @@
 	#define WINDOWX               680
 	#define WINDOWY               480
 
-	#define STARTX                90
+	#define STARTX                70
 	#define STARTY                450
 	#define STARTDIR              270
 
@@ -24,16 +24,16 @@
 //
 
 // Generation Settings
-	#define GENERATIONSIZE        2000
+	#define GENERATIONSIZE        500
 	#define GENERATIONTIME        1000
 	#define DEFAULTTICKSPERFRAME  1
 
-	#define PROCESSES             6
+	#define PROCESSES             5
 //
 
 // Physics Settings
 	#define EYERESOLUTION         5 // The resolution of the eye raytracer
-	#define MAXEYEVAL             40 // maxeyeval = MAXEYEVAL * EYERESOLUTION
+	#define MAXEYEVAL             20 // maxeyeval = MAXEYEVAL * EYERESOLUTION
 	#define ROADFRICTION          0.7
 	#define ACCEL                 3
 	#define FORWARDACCEL          0.01 // (internal value used for calculation)
