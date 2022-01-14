@@ -425,6 +425,7 @@ void cargeneration(struct Car* car) {
 }
 
 void threadfunc(struct Thread *thread) {
+
 	unsigned int tickstodo;
 	if (ticksperframe >= GENERATIONTIME) {
 		tickstodo = GENERATIONTIME;
@@ -432,8 +433,10 @@ void threadfunc(struct Thread *thread) {
 		tickstodo = ticksperframe;
 	}
 	unsigned int tempdeadcars = 0;
-	unsigned int oldalivecars;
+	unsigned int oldcarsalive;
+
 	for (unsigned int i = 0; i < tickstodo; ++i) {
+
 		for (unsigned int m = 0; m < thread->size; ++m) {
 			if ((thread->start + m)->alive) {
 				carframe(thread->start + m);
@@ -443,20 +446,30 @@ void threadfunc(struct Thread *thread) {
 			}
 			// some janky pointer stuff going on here, lets hope it works
 		}
-		oldalivecars = carsalive - tempdeadcars;
-		if (oldalivecars == 1) { // if only the best car is left, assume
+
+		do {
+			oldcarsalive = carsalive - tempdeadcars;
+			if (oldcarsalive == 1) {
+				carsalive = 0;
+				return;
+			} else if (tempdeadcars >= carsalive)
+				return;
+			carsalive = oldcarsalive;
+		} while (carsalive != oldcarsalive);
+
+		if (oldcarsalive == 1) { // if only the best car is left
 			if (car[maxfitnessid].alive == 1) {
 				carsalive = 0;
 				return;
 			}
 		}
-		do {
-			carsalive -= tempdeadcars;
-		} while (carsalive != oldalivecars);
-		if (carsalive == 0) {
-			return;
-		}
+
+		// if (carsalive == 0) {
+		// 	return;
+		// }
+
 	}
+
 }
 
 int main(int argc, char *argv[]) {
@@ -679,7 +692,6 @@ int main(int argc, char *argv[]) {
 									ticksperframe = GENERATIONTIME * 10;
 									break;
 								case SDLK_0:
-									tick = GENERATIONTIME;
 									break;
 								default: break;
 							}
