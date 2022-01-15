@@ -25,9 +25,9 @@ You need sdl2, gcc (or clang) and make
     # apt install libsdl2-dev build-essential
 ##### Gpu Acceleration (Optional / Untested)
 ###### Nvidia
-Fish out whichever package you need from 
-https://packages.ubuntu.com/search?keywords=nvidia+opencl&searchon=names 
-Then install with 
+Fish out whichever package you need from  
+https://packages.ubuntu.com/search?keywords=nvidia+opencl&searchon=names  
+Then install with  
 	# apt install <pkg name>
 ###### Amd
 	# apt install mesa-opencl-icd
