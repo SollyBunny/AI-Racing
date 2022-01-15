@@ -10,6 +10,13 @@ Thusly, it doesn't evolve very well/quickly
 You need sdl2, gcc (or clang) and make
 ##### Arch:
     # pacman -Sy sdl2 gcc make
+###### Gpu Acceleration (Optional)
+####### Nvidia 
+    # pacman -Sy opencl-nvidia ocl-icd
+####### Amd
+    # pacman -Sy opencl-mesa ocl-icd
+####### Intel (redundant)
+    # pacman -Sy intel-compute-runtime ocl-icd
 ##### Ubloatu
     # apt update
     # apt install libsdl2-dev build-essential
