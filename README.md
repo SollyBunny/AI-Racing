@@ -28,7 +28,7 @@ You need sdl2, gcc (or clang) and make
 Fish out whichever package you need from  
 https://packages.ubuntu.com/search?keywords=nvidia+opencl&searchon=names  
 Then install with
-    # apt install <pkg name>
+	# apt install <pkg name>
 ###### Amd
 	# apt install mesa-opencl-icd
 ###### Intel (Redundant)
