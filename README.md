@@ -36,7 +36,7 @@ Then install with
 	# apt install intel-opencl-icd
 
 ### Compiling
-Then you can simple make and run ./build/racer (or just make run)  
+Then you can simple make and run ./build/racer (or just `make run`)  
 
     $ make
     $ make run
