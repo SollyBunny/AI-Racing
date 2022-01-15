@@ -8,7 +8,8 @@ Thusly, it doesn't evolve very well/quickly
 
 ## Linux
 You need sdl2, gcc (or clang) and make
-#### Arch:
+
+### Arch:
     # pacman -Sy sdl2 gcc make
 ##### Gpu Acceleration (Optional)
 ###### Nvidia 
@@ -17,7 +18,7 @@ You need sdl2, gcc (or clang) and make
     # pacman -Sy opencl-mesa ocl-icd
 ###### Intel (redundant)
     # pacman -Sy intel-compute-runtime ocl-icd
-#### Ubloatu
+### Ubloatu
     # apt update
     # apt install libsdl2-dev build-essential
 Then you can simple make and run ./build/racer (or just make run)  
@@ -28,12 +29,12 @@ Then you can simple make and run ./build/racer (or just make run)
 
 Note I have only been able to get this to compile but not run
 
-#### Mingw
+### Mingw
 Compiler has a c compiler needed to, well, compile  
 https://sourceforge.net/projects/mingw/  
 Make sure to also install make in the installer gui to make stuff easier (optional)  
 
-#### Compiling
+### Compiling
 Compile by running in a terminal in the folder  
 
     $ make winblows
