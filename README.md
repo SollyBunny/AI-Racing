@@ -37,6 +37,7 @@ Then install with
 
 ### Compiling
 Then you can simple make and run ./build/racer (or just make run)  
+
     $ make
     $ make run
     
