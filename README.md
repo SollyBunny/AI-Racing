@@ -35,7 +35,7 @@ Then install with
 ###### Intel (Redundant)
 	# apt install intel-opencl-icd
 
-### Compiling
+### Compiling (All Linux)
 Then you can simple make and run ./build/racer (or just `make run`)  
 
     $ make
