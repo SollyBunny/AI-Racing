@@ -1,3 +1,7 @@
+
+#pragma GCC optimize("Ofast")
+#pragma GCC target("avx,avx2,fma")
+
 #ifdef _WIN32
 	#include <windows.h>
 	#ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
@@ -17,7 +21,6 @@ unsigned int ticksperframe = DEFAULTTICKSPERFRAME;
 struct Car * car;
 
 struct Thread* threads;	
-unsigned int   threadsdone = 0;
 
 void error(char str[]) {
 	#ifdef _WIN32
@@ -55,7 +58,6 @@ struct Map map;
 unsigned int maxfitnessid = 0;
 decimal maxfitness = 0;
 unsigned int generation = 0;
-unsigned int carsalive = GENERATIONSIZE;
 
 void carinfo(struct Car *car) {
 	#if _WIN32
@@ -67,15 +69,14 @@ void carinfo(struct Car *car) {
 		FillConsoleOutputCharacter(windows_hConsole, (TCHAR)' ', cellCount, (COORD){0, 0}, &count);
 		FillConsoleOutputAttribute(windows_hConsole, csbi.wAttributes, cellCount, (COORD){0, 0}, &count);
 		SetConsoleCursorPosition(windows_hConsole, (COORD){0, 0});
-		printf("Tick: %d\nGeneration: %d\nCars Alive: %d\nId: %d\nFitness: %f Maxfitness: %f\nPosition: (%f, %f)\nVelocity: (%f, %f)\nEyes: <: %*d ^: %*d >: %*d\nController: %c%c%c\n", 
+		printf("Generation: %d Tick: %d\nMaxfitness: %f\n\nId: %d\nFitness: %f\nPosition: (%f, %f)\nVelocity: (%f, %f)\nEyes: <: %*d ^: %*d >: %*d\nController: %c%c%c\n", 
 	#else
-		printf("\x1b[2J\x1b[HTick: %d\nGeneration: %d\nCars Alive: %d\nId: %d\nFitness: %f Maxfitness: %f\nPosition: (%f, %f)\nVelocity: (%f, %f)\nEyes: ←: %*d ↑: %*d → : %*d\nController: %s%s%s\n", 
+		printf("\x1b[2J\x1b[HGeneration: %d Tick: %d\nMaxfitness: %f\n\nId: %d\nFitness: %f\nPosition: (%f, %f)\nVelocity: (%f, %f)\nEyes: ←: %*d ↑: %*d → : %*d\nController: %s%s%s\n", 
 	#endif
-		tick,
-		generation,
-		carsalive,
+		generation, tick,
+		maxfitness,
 		car->id,
-		car->fitness, maxfitness,
+		car->fitness,
 		car->pos.x, car->pos.y,
 		car->vel.x, car->vel.y,
 		3, car->eyes.left,
@@ -96,10 +97,22 @@ void carinfo(struct Car *car) {
 
 		putchar('\n');
 		for (unsigned int i = 0; i < car->nodelen; ++i) {
-			printf("%d: %f dest:", i, car->node[i].val);
-			for (unsigned int m = 0; m < car->node[i].destlen; ++m) {
-				printf("%d:%f, ", car->node[i].dest[m].i, car->node[i].dest[m].weight);
-			}
+
+			#ifndef SHOWBRAINLAYERS
+				if (i == INPUTNODES) {
+					i += NODESPERLAYER * LAYERS;
+				}
+			#endif
+			
+			#ifdef SHOWBRAINADVANCED
+				printf("%d: %f dest:", i, car->node[i].val);
+				for (unsigned int m = 0; m < car->node[i].destlen; ++m) {
+					printf("%d:%f, ", car->node[i].dest[m].i, car->node[i].dest[m].weight);
+				}
+			#else
+				printf("%d: %f", i, car->node[i].val);
+			#endif
+			
 			putchar('\n');
 			if (
 				i == INPUTNODES - 1 ||
@@ -107,9 +120,8 @@ void carinfo(struct Car *car) {
 				(i > INPUTNODES - 1 &&
 					(i - INPUTNODES + 1) % NODESPERLAYER == 0
 				)
-			) {
-				putchar('\n');
-			}
+			) putchar('\n');
+			
 		}
 
 	#endif
@@ -129,9 +141,11 @@ void carclean(struct Car *car) {
 }
 
 void carresetpos(struct Car *car) {
-	car->controller.forward = 0;
-	car->controller.left    = 0;
-	car->controller.right   = 0;
+	if (car->aienabled) {
+		car->controller.forward = 0;
+		car->controller.left    = 0;
+		car->controller.right   = 0;
+	}
 	// car->eyes.forward = 0;
 	// car->eyes.left = 0;
 	// car->eyes.right = 0;
@@ -306,12 +320,10 @@ void carframe(struct Car *car) {
 	// Get next ticks controlls
 		// if (car->fitness > 0 && (car->forwardvel < 0.5)) {
 			// car->fitness--;
-		if (MAPVALUE(car->pos.x, car->pos.y) > car->maxroadval) {
-			car->maxroadval = MAPVALUE(car->pos.x, car->pos.y);
-			car->fitness += 5;
-			car->fitness += car->forwardvel * 0.1;
-		} else {
-			car->fitness -= 0.1;
+		_MAPVALUE_pos = MAPVALUE(car->pos.x, car->pos.y);
+		if (_MAPVALUE_pos > car->maxroadval) {
+			car->fitness += (_MAPVALUE_pos - car->maxroadval) * car->forwardvel;
+			car->maxroadval = _MAPVALUE_pos;
 		}
 		// car->fitness += car->forwardvel * 0.1;
 		// if (MAPVALUE(car->pos.x, car->pos.y) == 0) {
@@ -326,7 +338,7 @@ void carframe(struct Car *car) {
 		if (car->aienabled) carcontroller(car);
 }
 
-void carrender(struct Car *car, SDL_Texture *car_asset, SDL_Rect *car_size, SDL_Rect *car_pos) {
+void carrender(struct Car *car, SDL_Texture *car_asset, SDL_Rect *car_size, SDL_Rect *car_pos, unsigned int rendereyes) {
 
 	// render car
 	
@@ -341,6 +353,8 @@ void carrender(struct Car *car, SDL_Texture *car_asset, SDL_Rect *car_size, SDL_
    		SDL_RenderCopyEx(m_window_renderer, car_asset, car_size, car_pos, car->dir, 0, 0);
 		
 	// render eyes
+
+		if (rendereyes == 0) return;
 
 		SDL_SetRenderDrawColor(m_window_renderer, 
 			(EYECOLOR >> 16) & 0xFF, // r
@@ -386,15 +400,28 @@ void carrender(struct Car *car, SDL_Texture *car_asset, SDL_Rect *car_size, SDL_
 
 }
 
+#define resetallcarpos() \
+	for (unsigned int j = 0; j < GENERATIONSIZE; ++j) { \
+		carresetpos(&car[j]); \
+    } \
+    tick = 0;
+
 void cargeneration(struct Car* car) {
+
 	++generation;
-	maxfitness = 0;
-	for (unsigned int i = 0; i < GENERATIONSIZE; ++i) {
-		if (car[i].fitness > maxfitness) {
-			maxfitness = car[i].fitness;
-			maxfitnessid = i;
+
+	// if (carsalive == 0) {
+		maxfitness = 0;
+		for (unsigned int i = 0; i < GENERATIONSIZE; ++i) {
+			if (car[i].fitness > maxfitness) {
+				maxfitness = car[i].fitness;
+				maxfitnessid = i;
+			}
 		}
-	}
+	// }
+
+	#define ABEEGNUMBER 100
+
 	for (unsigned int i = 0; i < GENERATIONSIZE; ++i) { if (i != maxfitnessid) {
 
 		car[i].fitness = 0;
@@ -405,20 +432,44 @@ void cargeneration(struct Car* car) {
 			car[i].node[m].destlen = car[maxfitnessid].node[m].destlen;
 
 			if (car[i].node[m].destlen != 0) {
-				car[i].node[m].bias    = car[maxfitnessid].node[m].bias;
-				if (rand() % 100 <= MUTATIONCHANCE) {
-					car[i].node[m].bias = SIGMOID(car[i].node[m].bias + RANDOMDECIMAL());
-				}
-				car[i].node[m].dest    = realloc(car[i].node[m].dest, car[i].node[m].destlen * sizeof(struct Nodeconnection));
-				for (unsigned int j = 0; j < car[i].node[m].destlen; ++j) {
-					car[i].node[m].dest[j].weight = car[maxfitnessid].node[m].dest[j].weight;
+				// #ifdef OLDMUTATION
+					car[i].node[m].bias = car[maxfitnessid].node[m].bias;
 					if (rand() % 100 <= MUTATIONCHANCE) {
-						car[i].node[m].dest[j].weight = SIGMOID(car[i].node[m].dest[j].weight + RANDOMDECIMAL());
+						// car[i].node[m].bias = SIGMOID(car[i].node[m].bias + RANDOMDECIMAL());
+						car[i].node[m].bias += (((decimal)rand() / (decimal)RAND_MAX) - 0.5) / ABEEGNUMBER;
+						if (car[i].node[m].bias > 1 ) car[i].node[m].bias = 1 ;
+						if (car[i].node[m].bias < -1) car[i].node[m].bias = -1;
 					}
-				}
+					car[i].node[m].dest = realloc(car[i].node[m].dest, car[i].node[m].destlen * sizeof(struct Nodeconnection));
+					for (unsigned int j = 0; j < car[i].node[m].destlen; ++j) {
+						car[i].node[m].dest[j].weight = car[maxfitnessid].node[m].dest[j].weight;
+						if (rand() % 100 <= MUTATIONCHANCE) {
+							// car[i].node[m].dest[j].weight = SIGMOID(car[i].node[m].dest[j].weight + RANDOMDECIMAL());
+							car[i].node[m].dest[j].weight = (((decimal)rand() / (decimal)RAND_MAX) - 0.5) / ABEEGNUMBER;
+							if (car[i].node[m].dest[j].weight > 1 ) car[i].node[m].dest[j].weight = 1 ;
+							if (car[i].node[m].dest[j].weight < -1) car[i].node[m].dest[j].weight = -1;
+						}
+					}
+				// #else
+					// car[i].node[m].bias = car[maxfitnessid].node[m].bias;
+					// car[i].node[m].dest = realloc(car[i].node[m].dest, car[i].node[m].destlen * sizeof(struct Nodeconnection));
+					// for (unsigned int j = 0; j < car[i].node[m].destlen; ++j) {
+						// car[i].node[m].dest[j].weight = car[maxfitnessid].node[m].dest[j].weight;
+					// }
+				// #endif
 			}
 			
 		}
+
+		// #ifndef OLDMUTATION
+			// for (unsigned int _ = 0; _ < (LAYERS * NODESPERLAYER * NODESPERLAYER * MUTATIONCHANCE) / 100; ++_) {
+				// if (rand() % 10 > 5) { // mutate a nodes bias
+					// car[i].node[rand() % (NODESPERLAYER * LAYERS)].bias = car[maxfitnessid].node[m].bias;
+				// } else { // mutate a
+					// car[i].node[rand() % (NODESPERLAYER * LAYERS)].dest = car[maxfitnessid].node[m].bias;
+				// }
+			// }
+		// #endif
 		
 	} }
 
@@ -432,40 +483,34 @@ void threadfunc(struct Thread *thread) {
 	} else {
 		tickstodo = ticksperframe;
 	}
-	unsigned int tempdeadcars = 0;
-	unsigned int oldcarsalive;
+	unsigned int carframeflag;
 
 	for (unsigned int i = 0; i < tickstodo; ++i) {
+
+		carframeflag = 0;
 
 		for (unsigned int m = 0; m < thread->size; ++m) {
 			if ((thread->start + m)->alive) {
 				carframe(thread->start + m);
-				if ((thread->start + m)->alive == 0) { // car has died :P
-					tempdeadcars++;
+				if ((thread->start + m)->alive == 1) {
+					// if (carframeflag == 1) carframeflag = 2;
+					// else                   carframeflag = 1;
+					carframeflag = 1;
 				}
 			}
 			// some janky pointer stuff going on here, lets hope it works
 		}
 
-		do {
-			oldcarsalive = carsalive - tempdeadcars;
-			if (oldcarsalive == 1) {
-				carsalive = 0;
-				return;
-			} else if (tempdeadcars >= carsalive)
-				return;
-			carsalive = oldcarsalive;
-		} while (carsalive != oldcarsalive);
-
-		if (oldcarsalive == 1) { // if only the best car is left
-			if (car[maxfitnessid].alive == 1) {
-				carsalive = 0;
-				return;
-			}
+		if (carframeflag == 0) { // no cars are alive, exit
+			thread->alive = 0;
+			return;
 		}
-
-		// if (carsalive == 0) {
-		// 	return;
+		// TODO optimization, kill if best car is alive only 
+		// else if (carframeflag == 1) { // 1 car is alive
+			// if (maxfitnesscar[maxfitnessid].alive == 1) { // if only the best car is ours and is alive, kill
+				// thread->alive = 0;
+				// return;
+			// }
 		// }
 
 	}
@@ -504,7 +549,7 @@ int main(int argc, char *argv[]) {
 		SDL_Texture *map_asset;
 
 		decimal fps;
-		decimal maxfps = 20;
+		decimal maxfps = MAXFPSIDLE;
 		long unsigned int fps_pretime = 0;
 		long unsigned int fps_curtime = 0;
 
@@ -570,8 +615,15 @@ int main(int argc, char *argv[]) {
 				} else if (map.data[i] == 1) {
 					*dst++ = BARRIERCOLOR;
 				} else {
-					// *dst++ = map.data[i] * 256;
-					*dst++ = ROADCOLOR;
+					#ifdef SHOWMAPDATA
+						*dst++ = 
+							(map.data[i] << 0 ) +
+							(128 << 8 ) +
+							(map.data[i] << 16) 
+						;
+					#else
+						*dst++ = ROADCOLOR;
+					#endif
 				}
 			}
 			SDL_UnlockTexture(map_asset);
@@ -641,11 +693,13 @@ int main(int argc, char *argv[]) {
 
 	// Init pthreads
 
+		unsigned int threadaliveflag;
 		threads = malloc(PROCESSES * sizeof(struct Thread));
 		for (unsigned int i = 0; i < PROCESSES; ++i) {
 			threads[i].id    = i;
 			threads[i].start = &car[i * (GENERATIONSIZE / PROCESSES)];
 			threads[i].size  = GENERATIONSIZE / PROCESSES;
+			threads[i].alive = 1;
 		} 
 	
 	// Main loop
@@ -669,29 +723,38 @@ int main(int argc, char *argv[]) {
 									break;
 								case SDLK_1:
 									ticksperframe = 1;
+									maxfps        = MAXFPSIDLE;
 									break;
 								case SDLK_2:
 									ticksperframe = 5;
+									maxfps        = MAXFPSIDLE;
 									break;
 								case SDLK_3:
 									ticksperframe = 10;
+									maxfps        = MAXFPSIDLE;
 									break;
 								case SDLK_4:
 									ticksperframe = 50;
+									maxfps        = MAXFPSIDLE;
 									break;
 								case SDLK_5:
 									tick = GENERATIONTIME;
 									ticksperframe = GENERATIONTIME;
+									maxfps = MAXFPSWORKING;
 									break;
 								case SDLK_6:
 									tick = GENERATIONTIME;
 									ticksperframe = GENERATIONTIME * 5;
+									maxfps = MAXFPSWORKING;
 									break;
 								case SDLK_7:
 									tick = GENERATIONTIME;
 									ticksperframe = GENERATIONTIME * 10;
+									maxfps = MAXFPSWORKING;
 									break;
 								case SDLK_0:
+									cargeneration(car);
+									goto carrendergeneration;
 									break;
 								default: break;
 							}
@@ -713,64 +776,71 @@ int main(int argc, char *argv[]) {
 					}
 				}
 
-				for (unsigned int i = 0; i < 1 + (ticksperframe / GENERATIONTIME); ++i) {
+				for (unsigned int i = ((ticksperframe - 1) / GENERATIONTIME) + 1; i > 0; --i) {
+					threadaliveflag = 0;
 					for (unsigned int m = 0; m < PROCESSES; ++m) {
-						pthread_create(&threads[m].thread, NULL, (void *)threadfunc, &threads[m]);
+						if (threads[m].alive) pthread_create(&threads[m].thread, NULL, (void *)threadfunc, &threads[m]);
 					} 
-					for (unsigned int m = 0; m < PROCESSES; ++m) {
+					for (unsigned int m = 0; m < PROCESSES; ++m) { if (threads[m].alive) {
 						pthread_join(threads[m].thread, NULL);
-					}
-					if (carsalive == 0) {
+						if (threads[m].alive == 1) {
+							threadaliveflag = 1;
+						}
+					}}
+					if (threadaliveflag == 0) {
+						for (unsigned int m = 0; m < PROCESSES; ++m) threads[m].alive = 1;
 						cargeneration(car);
+						goto carrendergeneration;
 					} else if (ticksperframe >= GENERATIONTIME) {
 						cargeneration(car);
-						if (i < (ticksperframe / GENERATIONTIME)) {
-							for (unsigned int j = 0; j < GENERATIONSIZE; ++j) {
-					        	carresetpos(&car[j]);
-					        }
-							carsalive = GENERATIONSIZE;
-				        }
+						goto carrendergeneration;
 					} else {
 						tick += ticksperframe;
 						if (tick >= GENERATIONTIME) {
 							cargeneration(car);
+							goto carrendergeneration;
 						}
 					}
-					//carinfo(&car[maxfitnessid]);
+					// carinfo(&car[maxfitnessid]);
 
+					if (tick >= GENERATIONTIME && i > 1) { 
+						resetallcarpos();
+					}
+					
 				}
 				
-
 				
 			// Render
 
-				// SDL_SetRenderDrawColor(m_window_renderer, 0, 255, 0, 255);
-				// SDL_RenderClear(m_window_renderer);
-
-				// render map
+				// Render normally
+				
 					SDL_RenderCopy(m_window_renderer, map_asset, map_size, map_pos);
-
-				// render cars
 					for (unsigned int i = 0; i < GENERATIONSIZE; ++i) { 
 						if (i != maxfitnessid) {
 							if (car[i].alive == 1) {
-								carrender(&car[i], car_asset, car_size, car_pos);
+								carrender(&car[i], car_asset, car_size, car_pos, 1);
 							}
 						}
 					}
-					carrender(&car[maxfitnessid], car_asset, car_size, car_pos); // Render best car regardless if its alive or not
+					if (car[maxfitnessid].alive == 1)
+						carrender(&car[maxfitnessid], car_asset, car_size, car_pos, 1); // Render best car regardless if its alive or not
+			        SDL_RenderPresent(m_window_renderer);
 
-				// Render fps
-					// for (int i = 1; i < intsize(fps) + 1; ++i) {
-						// font_size->x = (
-							// ((int)fps / powten(i)) % 10
-						// ) * 6;
-						// font_pos->x = (intsize(fps) - i) * 10;
-			        	// SDL_RenderCopy(m_window_renderer, font_asset, font_size, font_pos);
-			        // }
-		        
-		        SDL_RenderPresent(m_window_renderer);
+			    goto carrenderend;
+			    carrendergeneration: // render after a generation (all cars)
 
+					SDL_RenderCopy(m_window_renderer, map_asset, map_size, map_pos);
+					for (unsigned int i = 0; i < GENERATIONSIZE; ++i) { 
+						if (i != maxfitnessid) {
+							carrender(&car[i], car_asset, car_size, car_pos, 0);
+						}
+					}
+					carrender(&car[maxfitnessid], car_asset, car_size, car_pos, 0); // Render best car regardless if its alive or not
+			        SDL_RenderPresent(m_window_renderer);
+
+				carrenderend:
+
+			// Info
 				#if _WIN32
 					if (tick % 5 == 0) {
 				#else
@@ -779,16 +849,10 @@ int main(int argc, char *argv[]) {
 					carinfo(&car[maxfitnessid]);
 				}
 
-				// reset pos after render
-				if (carsalive == 0) goto resetpos;
-				if (tick >= GENERATIONTIME) {
-					tick = 0;
-					resetpos:
-						for (unsigned int i = 0; i < GENERATIONSIZE; ++i) {
-							carresetpos(&car[i]);
-						}
-						carsalive = GENERATIONSIZE;
-				}	
+				
+				if (ticksperframe >= GENERATIONTIME || tick >= GENERATIONTIME || threadaliveflag == 0) {
+					resetallcarpos();
+				}
 
 			// Fps
 

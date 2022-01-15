@@ -13,7 +13,7 @@ typedef double decimal;
 #define RAD(deg) ((deg) * 0.01745329)
 #define DEG(rad) ((rad) * 57.29578  )
 
-#define RANDOMDECIMAL() (((decimal)rand() / (decimal)RAND_MAX) - 0.5)
+#define RANDOMDECIMAL() ((((decimal)rand() / (decimal)RAND_MAX) - 0.5) * 2)
 
 struct Pos {
 	decimal x;
@@ -86,6 +86,7 @@ struct Thread {
 	unsigned int id;
 	struct Car *start;
 	unsigned int size;
+	unsigned int alive;
 };
 
 struct Map {

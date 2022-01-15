@@ -3,6 +3,8 @@
 
 // Terminal Settings
 	#define SHOWBRAIN
+	//#define SHOWBRAINLAYERS
+	//#define SHOWBRAINADVANCED
 
 // Map settins
 	#define WINDOWX               680
@@ -21,21 +23,16 @@
 	#define MAPPATH               "map.map"
 	#define CARPATH               "./assets/cars.bmp"
 	//#define FONTPATH              "./assets/font.bmp"
-//
 
-// Generation Settings
-	#define GENERATIONSIZE        500
-	#define GENERATIONTIME        1000
-	#define DEFAULTTICKSPERFRAME  1
-
-	#define PROCESSES             5
+	// #define SHOWMAPDATA
+	
 //
 
 // Physics Settings
-	#define EYERESOLUTION         5 // The resolution of the eye raytracer
+	#define EYERESOLUTION         10 // The resolution of the eye raytracer
 	#define MAXEYEVAL             20 // maxeyeval = MAXEYEVAL * EYERESOLUTION
-	#define ROADFRICTION          0.7
-	#define ACCEL                 3
+	#define ROADFRICTION          0.8
+	#define ACCEL                 2
 	#define FORWARDACCEL          0.01 // (internal value used for calculation)
 	#define WHEELDIRFRICTION      0.5
 	#define WHEELDIRACCEL         20
@@ -50,8 +47,9 @@
 		eye right
 		eye softleft
 		eye softright
+		speed
 	*/ // Probably shoudn't change this
-	#define INPUTNODES 5
+	#define INPUTNODES 6
 	/*
 		controller left
 		controller right
@@ -61,8 +59,18 @@
 	*/ // Probably shoudn't change this
 	#define OUTPUTNODES 3
 
-	#define LAYERS 1
-	#define NODESPERLAYER 4
+	#define LAYERS 2
+	#define NODESPERLAYER 10
 
 	#define MUTATIONCHANCE 1
+//
+
+// Generation Settings
+	#define GENERATIONSIZE        10000
+	#define GENERATIONTIME        1000
+	#define DEFAULTTICKSPERFRAME  1
+
+	#define PROCESSES             10
+	#define MAXFPSIDLE            20
+	#define MAXFPSWORKING         5
 //

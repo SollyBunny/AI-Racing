@@ -121,13 +121,14 @@ void carinit(struct Car *car) {
 
 void carcontroller(struct Car *car) {
 
-	#define EYENORMALIZE(a) (((decimal)(a) / MAXEYEVAL * 2) - 1)
+	#define EYENORMALIZE(a) (((decimal)(a) / MAXEYEVAL * 2) - 1) // -g3
 
 	car->node[0].val = EYENORMALIZE(car->eyes.left);
 	car->node[1].val = EYENORMALIZE(car->eyes.right);
 	car->node[2].val = EYENORMALIZE(car->eyes.softleft);
 	car->node[3].val = EYENORMALIZE(car->eyes.softright);
 	car->node[4].val = EYENORMALIZE(car->eyes.forward);
+	car->node[5].val = car->forwardvel;
 	// car->node[5].val = car->forwardvel;
 	// car->node[6].val = (car->dir / 360);
 
