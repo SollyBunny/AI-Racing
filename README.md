@@ -14,11 +14,11 @@ You need sdl2, gcc (or clang) and make
     # pacman -Sy sdl2 gcc make
 ##### Gpu Acceleration (Optional)
 ###### Nvidia
-    # pacman -Sy opencl-nvidia ocl-icd
+    # pacman -Sy opencl-nvidia ocl-icd opencl-headers
 ###### Amd (Untested)
-    # pacman -Sy opencl-mesa ocl-icd
+    # pacman -Sy opencl-mesa ocl-icd opencl-headers
 ###### Intel (Redundant / Untested)
-    # pacman -Sy intel-compute-runtime ocl-icd
+    # pacman -Sy intel-compute-runtime ocl-icd opencl-headers
     
 ### Ubloatu
     # apt update

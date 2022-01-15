@@ -23,4 +23,4 @@ run:
 
 
 run_winblows:
-	-cd build && wine ./racer.exe
+	-(cd build && wine ./racer.exe)
